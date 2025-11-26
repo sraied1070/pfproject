@@ -1,4 +1,3 @@
-//hello
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -28,7 +27,6 @@ void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSpr
 			}
 		}
 	}
-
 }
 
 void obstacles(char**lvl, const int height, const int width){
@@ -49,6 +47,15 @@ void jump(bool& onGround, float& velocityY, const float jumpStrength){
 		velocityY = jumpStrength;
 		onGround = false;
 	}
+}
+
+void ghost_move(float& ghost_x, float& ghost_y, int& ghost_direction, float ghost_speed, char** lvl, int cell_size){
+	int posiY=ghost_y/cell_size;
+	int posiX=ghost_x/cell_size;
+	int newX=(ghost_x + ghost_speed)*ghost_direction;
+	if(lvl[posiX][posiY]== '#')
+		ghost_direction = -ghost_direction;
+	
 }
 
 void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
@@ -168,6 +175,20 @@ int main()
 	char top_mid_up = '\0';
 	char top_left_up = '\0';
 
+			//GHOST VARIABLES and SPRITE
+	float ghost_x=150,ghost_y=70,ghost_speed=2;
+	int ghost_direction;
+
+	Texture ghostTex;
+	Sprite ghostSprite;
+
+	ghostTex.loadFromFile("Data/ghost.png");
+	ghostSprite.setTexture(ghostTex);
+	ghostSprite.setScale(3,3);
+	ghostSprite.setPosition(ghost_x,ghost_y);
+	ghostSprite.setTextureRect(IntRect(0, 0, 32, 32));
+
+				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
 	PlayerSprite.setScale(3,3);
@@ -259,6 +280,7 @@ int main()
 		player_gravity(lvl,offset_y,velocityY,onGround,gravity,terminal_Velocity, player_x, player_y, cell_size, PlayerHeight, PlayerWidth);
 		PlayerSprite.setPosition(player_x, player_y);
 		window.draw(PlayerSprite);
+		window.draw(ghostSprite);
 
 		window.display();
 		lvlMusic.stop();
