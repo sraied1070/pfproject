@@ -30,6 +30,26 @@ void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSpr
 
 }
 
+void obstacles(char**lvl, const int height, const int width){
+	for (int i = 0; i < height; i++)
+	{
+		for (int j=0;  j< width; j++)
+		{
+			if (i==0 || j==0 || i==height-1 || j==width-1)
+				lvl[i][j] = '#';
+			else
+				lvl[i][j] = ' ';
+		}	
+	}
+}
+
+void jump(bool& onGround, float& velocityY, const float jumpStrength){
+	if(onGround){
+		velocityY = jumpStrength;
+		onGround = false;
+	}
+}
+
 void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
 {
 	offset_y = player_y;
@@ -40,7 +60,7 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
 	char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
 	char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
 
-	if (bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#')
+	if ((bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#'))
 	{
 		onGround = true;
 	}
@@ -109,8 +129,8 @@ int main()
 	bool isJumping = false;  // Track if jumping
 
 	bool up_collide = false;
-	bool left_collide = true;
-	bool right_collide = true;
+	bool left_collide = false;
+	bool right_collide = false;
 
 	Texture PlayerTexture;
 	Sprite PlayerSprite;
@@ -160,6 +180,8 @@ int main()
 		lvl[i] = new char[width];
 	}
 
+	obstacles(lvl, height, width);
+
 	lvl[7][7] = '#';
 	lvl[7][8] = '#';
 	lvl[7][9] = '#';
@@ -203,24 +225,32 @@ int main()
 			window.close();
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::D))
+		if (Keyboard::isKeyPressed(Keyboard::Right))
 		{
-			player_x+=13;
+			//if(player_x <= screen_x-(PlayerWidth)*1.525)
+			player_x+=speed;
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::A))
+		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
-			player_x-=13;
+			player_x-=speed;
 		}
-		if (Keyboard::isKeyPressed(Keyboard::S))
+		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
-			player_y+=6;
+			jump(onGround, velocityY, jumpStrength);
+		}
+		if (Keyboard::isKeyPressed(Keyboard::Down))
+		{
+			player_y+=20;
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::S))
-		{
-			player_y-=6;
-		}
+		if(player_x >= screen_x-(PlayerWidth)*1.525)
+			player_x = screen_x-(PlayerWidth)*1.525;
+
+		if(player_x <= cell_size)
+			player_x = cell_size;
+
+
 
 		window.clear();
 
@@ -230,6 +260,7 @@ int main()
 		window.draw(PlayerSprite);
 
 		window.display();
+		lvlMusic.stop();
 	}
 
 	//stopping music and deleting level array
@@ -242,4 +273,5 @@ int main()
 
 	return 0;
 }
+
 
