@@ -29,7 +29,8 @@ void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSpr
 	}
 }
 
-void obstacles(char**lvl, const int height, const int width){
+			//BOUNDARY FORMATION
+void boundaries(char**lvl, const int height, const int width){
 	for (int i = 0; i < height; i++)
 	{
 		for (int j=0;  j< width; j++)
@@ -38,6 +39,25 @@ void obstacles(char**lvl, const int height, const int width){
 				lvl[i][j] = '#';
 			else
 				lvl[i][j] = ' ';
+		}	
+	}
+}
+
+				//PLATFORM FORMATION
+void platform(char**lvl, const int height, const int width){
+	for (int i = 0; i < height; i++)
+	{
+		for (int j=0;  j< width; j++)
+		{
+			if (( i==3 || i == 7 || i == 11) && ( j>2 && j<width-3 ) )
+				lvl[i][j] = '#';
+			if ( (i>3 && i<height-2 ) && ( j == width/2 || j == (width/2)-1 ) )
+				lvl[i][j] = '#';
+			if ( (i>4 && i<height-4) && ( j == (width/2)-2 || j == (width/2)+1 ) )
+				lvl[i][j] = '#';
+			if ( (i==5 || i==9) && (j<=4 || j>=width-5) )
+				lvl[i][j] = '#';
+			
 		}	
 	}
 }
@@ -131,7 +151,7 @@ int main()
 
 	float speed = 5;
 
-	const float jumpStrength = -20; // Initial jump velocity
+	const float jumpStrength = -16; // Initial jump velocity
 	const float gravity = 1;  // Gravity acceleration
 
 	bool isJumping = false;  // Track if jumping
@@ -151,8 +171,8 @@ int main()
 
 	float terminal_Velocity = 20;
 
-	int PlayerHeight = 102;
-	int PlayerWidth = 96;
+	int PlayerHeight = 70;
+	int PlayerWidth = 64;
 
 	bool up_button = false;
 
@@ -191,7 +211,7 @@ int main()
 				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
-	PlayerSprite.setScale(3,3);
+	PlayerSprite.setScale(2,2);
 	PlayerSprite.setPosition(player_x, player_y);
 
 
@@ -202,26 +222,13 @@ int main()
 		lvl[i] = new char[width];
 	}
 
-	obstacles(lvl, height, width);
+	boundaries(lvl, height, width);
+	platform(lvl, height, width);
 
 	lvl[7][7] = '#';
 	lvl[7][8] = '#';
 	lvl[7][9] = '#';
 	lvl[7][10] = '#';
-	lvl[2][2] = '#';
-	lvl[2][3] = '#';
-	lvl[2][4] = '#';
-	lvl[2][5] = '#';
-	lvl[10][5] = '#';
-	lvl[10][6] = '#';
-	lvl[10][7] = '#';
-	lvl[10][8] = '#';
-	lvl[10][9] = '#';
-	lvl[10][10] = '#';
-	lvl[10][11] = '#';
-	lvl[10][12] = '#';
-	lvl[10][13] = '#';
-	lvl[10][14] = '#';
 
 	Event ev;
 	//main loop
