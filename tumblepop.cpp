@@ -109,11 +109,10 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
     if (shouldLand)
     {
         onGround = true;
-        velocityY = 0;
         
         // SNAP: Calculate the block index and snap to the top, offset by -1 pixel (Epsilon)
-        int block_y_index = (int)(offset_y + Pheight) / cell_size;
-        player_y = block_y_index * cell_size - Pheight - 1.0f; 
+       // int block_y_index = (int)(offset_y + Pheight) / cell_size;
+       // player_y = block_y_index * cell_size - Pheight - 1.0f; 
     }
     else
     {
@@ -132,6 +131,41 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
         velocityY = 0;
     }
 }
+
+
+/*void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
+{
+	offset_y = player_y;
+
+	offset_y += velocityY;
+
+	char bottom_left_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x ) / cell_size];
+	char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
+	char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
+
+	if ((bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#'))
+	{
+		onGround = true;
+	}
+	else
+	{
+		player_y = offset_y;
+		onGround = false;
+	}
+
+	if (!onGround)
+	{
+		velocityY += gravity;
+		if (velocityY >= terminal_Velocity) velocityY = terminal_Velocity;
+	}
+
+	else
+	{
+		velocityY = 0;
+	}
+}
+*/
+
 
 
 int main()
@@ -197,6 +231,8 @@ int main()
 
 	int PlayerHeight = 102;
 	int PlayerWidth = 96;
+
+	int horizontal_index = 0;
 
 	bool up_button = false;
 
@@ -285,26 +321,40 @@ int main()
 
 		if (Keyboard::isKeyPressed(Keyboard::Right))
 		{			
-			right_top = lvl[(int)(player_y+PlayerHeight) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
-			right_mid = lvl[(int)(player_y+PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+			right_top = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+			right_mid = lvl[(int)(player_y + PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
 			right_bottom = lvl[(int)(player_y) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+
 			if(right_mid != '#' && right_bottom != '#' && right_top != '#')
 				player_x += speed;
 			else;
-				right_top = right_bottom = right_mid = '\0';
+				//player_x = (horizontal_index * cell_size) - PlayerWidth;
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Left))
-		{
-			left_top = lvl[(int)(player_y+PlayerHeight) / cell_size][(int)(player_x) / cell_size];
-			left_mid = lvl[(int)(player_y+PlayerHeight/2) / cell_size][(int)(player_x) / cell_size];
-			left_bottom = lvl[(int)(player_y) / cell_size][(int)(player_x) / cell_size];
-				if(left_mid != '#' && left_bottom != '\0' && left_top != '#')
-					player_x -= speed;
-				else
-					left_top = left_bottom = left_mid = '\0';;
-				
-		}
+{
+    // Calculate the column index of the tile immediately to the LEFT of the player
+    // Note: We check the current position minus the speed.
+    int left_col_index = (player_x - speed) / cell_size; 
+
+    // Check collision points at the next potential position
+    char left_top = lvl[(int)(player_y) / cell_size][left_col_index];
+    char left_mid = lvl[(int)(player_y + PlayerHeight / 2) / cell_size][left_col_index];
+    char left_bottom = lvl[(int)(player_y + PlayerHeight - 1) / cell_size][left_col_index];
+
+    // Check if NONE of the three collision points are a wall ('#')
+    if (left_mid != '#' && left_bottom != '#' && left_top != '#') {
+        // Safe to move: Apply the movement
+        player_x -= speed;
+    }
+    // COLLISION RESOLUTION (Snapping to prevent sticking and bouncing)
+    else {
+        // Collision detected: Snap player flush with the right edge of the wall tile.
+        // (left_col_index + 1) * cell_size is the pixel coordinate of the wall's right edge.
+        player_x = (left_col_index + 1) * cell_size;
+        // NO movement is applied in this direction for this frame.
+    }
+}
 		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
 			isJumping = true;
@@ -314,11 +364,6 @@ int main()
 		{
 			player_y+=20;
 		}
-		
-		if(player_x <= cell_size)
-			player_x = cell_size;
-
-
 
 		window.clear();
 
