@@ -49,13 +49,10 @@ void platform(char**lvl, const int height, const int width){
 	{
 		for (int j=0;  j< width; j++)
 		{
-			if (( i==3 || i == 7 || i == 11) && ( j>2 && j<width-3 ) )
+			if (( i==3 || i == 10) && ( j>2 && j<width-6 ) )
 				lvl[i][j] = '#';
-			if ( (i>3 && i<height-2 ) && ( j == width/2 || j == (width/2)-1 ) )
-				lvl[i][j] = '#';
-			if ( (i>4 && i<height-4) && ( j == (width/2)-2 || j == (width/2)+1 ) )
-				lvl[i][j] = '#';
-			if ( (i==5 || i==9) && (j<=4 || j>=width-5) )
+
+			if ( (i==6 || i==9) && (j<=3 || j>=width-4) )
 				lvl[i][j] = '#';
 			
 		}	
@@ -80,34 +77,60 @@ void ghost_move(float& ghost_x, float& ghost_y, int& ghost_direction, float ghos
 
 void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
 {
-	offset_y = player_y;
+    // Store the original Y position
+    float original_y = player_y;
 
-	offset_y += velocityY;
+    offset_y = player_y;
+    offset_y += velocityY; 
 
-	char bottom_left_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x ) / cell_size];
-	char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
-	char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
+    // 1. Check potential collision tiles at the *new* offset position
+    char bottom_left_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x ) / cell_size];
+    char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
+    char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
 
-	if ((bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#'))
-	{
-		onGround = true;
-	}
-	else
-	{
-		player_y = offset_y;
-		onGround = false;
-	}
+    bool blockBelow = (bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#');
+    bool shouldLand = false;
 
-	if (!onGround)
-	{
-		velocityY += gravity;
-		if (velocityY >= terminal_Velocity) velocityY = terminal_Velocity;
-	}
+    // Condition to Land: Must have a block below AND be moving downwards
+    if (blockBelow && velocityY > 0)
+    {
+        // Calculate the Y coordinate of the block's top edge
+        int block_y_index = (int)(offset_y + Pheight) / cell_size; 
+        float block_top_y = (float)block_y_index * cell_size;
+        
+        // Check if the player's bottom edge (at the *original* position) was above the block's top edge
+        // This confirms the player is landing ON the block, not hitting its side.
+        if (original_y + Pheight <= block_top_y)
+        {
+            shouldLand = true;
+        }
+    }
 
-	else
-	{
-		velocityY = 0;
-	}
+    if (shouldLand)
+    {
+        onGround = true;
+        velocityY = 0;
+        
+        // SNAP: Calculate the block index and snap to the top, offset by -1 pixel (Epsilon)
+        int block_y_index = (int)(offset_y + Pheight) / cell_size;
+        player_y = block_y_index * cell_size - Pheight - 1.0f; 
+    }
+    else
+    {
+        player_y = offset_y;
+        onGround = false;
+    }
+
+    if (!onGround)
+    {
+        velocityY += gravity;
+        if (velocityY >= terminal_Velocity) velocityY = terminal_Velocity;
+    }
+
+    else
+    {
+        velocityY = 0;
+    }
 }
 
 
@@ -151,10 +174,11 @@ int main()
 
 	float speed = 5;
 
-	const float jumpStrength = -16; // Initial jump velocity
+	const float jumpStrength = -20; // Initial jump velocity
 	const float gravity = 1;  // Gravity acceleration
 
 	bool isJumping = false;  // Track if jumping
+	bool isMoving = false; //Motion detection
 
 	bool up_collide = false;
 	bool left_collide = false;
@@ -171,8 +195,8 @@ int main()
 
 	float terminal_Velocity = 20;
 
-	int PlayerHeight = 70;
-	int PlayerWidth = 64;
+	int PlayerHeight = 102;
+	int PlayerWidth = 96;
 
 	bool up_button = false;
 
@@ -181,7 +205,12 @@ int main()
 	char top_mid = '\0';
 
 	char left_mid = '\0';
+	char left_bottom = '\0';
+	char left_top = '\0';
+
+	char right_top = '\0';
 	char right_mid = '\0';
+	char right_bottom = '\0';
 
 	char bottom_left = '\0';
 	char bottom_right = '\0';
@@ -211,7 +240,7 @@ int main()
 				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
-	PlayerSprite.setScale(2,2);
+	PlayerSprite.setScale(3,3);
 	PlayerSprite.setPosition(player_x, player_y);
 
 
@@ -255,27 +284,37 @@ int main()
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Right))
-		{
-			//if(player_x <= screen_x-(PlayerWidth)*1.525)
-			player_x+=speed;
+		{			
+			right_top = lvl[(int)(player_y+PlayerHeight) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+			right_mid = lvl[(int)(player_y+PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+			right_bottom = lvl[(int)(player_y) / cell_size][(int)(player_x + PlayerWidth) / cell_size];
+			if(right_mid != '#' && right_bottom != '#' && right_top != '#')
+				player_x += speed;
+			else;
+				right_top = right_bottom = right_mid = '\0';
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
-			player_x-=speed;
+			left_top = lvl[(int)(player_y+PlayerHeight) / cell_size][(int)(player_x) / cell_size];
+			left_mid = lvl[(int)(player_y+PlayerHeight/2) / cell_size][(int)(player_x) / cell_size];
+			left_bottom = lvl[(int)(player_y) / cell_size][(int)(player_x) / cell_size];
+				if(left_mid != '#' && left_bottom != '\0' && left_top != '#')
+					player_x -= speed;
+				else
+					left_top = left_bottom = left_mid = '\0';;
+				
 		}
 		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
+			isJumping = true;
 			jump(onGround, velocityY, jumpStrength);
 		}
 		if (Keyboard::isKeyPressed(Keyboard::Down))
 		{
 			player_y+=20;
 		}
-
-		if(player_x >= screen_x-(PlayerWidth)*1.525)
-			player_x = screen_x-(PlayerWidth)*1.525;
-
+		
 		if(player_x <= cell_size)
 			player_x = cell_size;
 
