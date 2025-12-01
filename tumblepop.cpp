@@ -43,6 +43,74 @@ void boundaries(char**lvl, const int height, const int width){
 	}
 }
 
+void initGhosts(int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], int ghost_count,
+				int ghostTimer[])
+{
+    // rows where ghosts can safely stand
+    int spawnRows[4] = {2, 5, 8, 9};  // above platforms at 3, 6, 9, 10
+    int rowCount = 4;
+
+    int colStart = 3;     // starting column
+    int colStep  = 3;     // spacing between ghosts
+
+    int g = 0;
+
+    // place two ghosts per row until we fill all 8
+    for(int r = 0; r < rowCount && g < ghost_count; r++)
+    {
+        for(int c = 0; c < 2 && g < ghost_count; c++)
+        {
+            ghostX[g] = colStart + c * colStep;   // spread horizontally
+            ghostY[g] = spawnRows[r];             // different rows
+            ghostDir[g] = 1;                      // start moving right
+            ghostSpeed[g] = 30;
+			ghostTimer[g] = 0;
+            g++;
+        }
+    }
+}
+
+void moveGhosts(char** lvl, int height, int width, 
+                int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], 
+                int ghost_count, int ghostTimer[])
+{
+    for(int g = 0; g < ghost_count; g++)
+    {
+		ghostTimer[g]++;
+
+        // move only every "ghostSpeed[g]" frames
+        if(ghostTimer[g] < ghostSpeed[g])
+            continue;
+
+		ghostTimer[g]=0;
+
+        int gx = ghostX[g];
+        int gy = ghostY[g];
+        int dir = ghostDir[g];
+
+        int nextX = gx + dir;
+        int nextY = gy;
+
+        //turning around if hitting a wall
+        if (lvl[nextY][nextX] == '#')
+        {
+            ghostDir[g] = -dir;
+            continue;
+        }
+
+        //turn around if next tile below is not a block
+        if (lvl[gy + 1][nextX] != '#')
+        {
+            ghostDir[g] = -dir;
+            continue;
+        }
+
+        //move ghost
+        ghostX[g] = nextX;
+    }
+}
+
+
 				//PLATFORM FORMATION
 void platform(char**lvl, const int height, const int width){
 	for (int i = 0; i < height; i++)
@@ -72,15 +140,6 @@ void fall(bool& onGround, float& player_y, const float jumpStrength, int PlayerH
 		if (player_y + PlayerHeight < screen_y - (cell_size * 2)) // Clamping down movement, cannot move down if standing on last bottom boundary
 		player_y -= jumpStrength;
 	}
-}
-
-void ghost_move(float& ghost_x, float& ghost_y, int& ghost_direction, float ghost_speed, char** lvl, int cell_size){
-	int posiY=ghost_y/cell_size;
-	int posiX=ghost_x/cell_size;
-	int newX=(ghost_x + ghost_speed)*ghost_direction;
-	if(lvl[posiX][posiY]== '#')
-		ghost_direction = -ghost_direction;
-	
 }
 
 void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
@@ -231,16 +290,22 @@ int main()
 	char top_left_up = '\0';
 
 			//GHOST VARIABLES and SPRITE
-	float ghost_x=150,ghost_y=70,ghost_speed=2;
-	int ghost_direction;
+	const int ghost_count = 8;
+
+	int ghostX[ghost_count];
+	int ghostY[ghost_count];
+	int ghostDir[ghost_count];   // 1 = right, -1 = left
+	int ghostSpeed[ghost_count];
+	int ghostTimer[ghost_count];
+	initGhosts(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
+
 
 	Texture ghostTex;
 	Sprite ghostSprite;
 
 	ghostTex.loadFromFile("Data/ghost.png");
 	ghostSprite.setTexture(ghostTex);
-	ghostSprite.setScale(3,3);
-	ghostSprite.setPosition(ghost_x,ghost_y);
+	ghostSprite.setScale(2,2);
 	ghostSprite.setTextureRect(IntRect(0, 0, 32, 32));
 
 				//PLAYER SPRITE
@@ -339,6 +404,9 @@ int main()
 		{
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
+		//calling function to move ghosts
+		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
+
 
 		window.clear();
 
@@ -346,7 +414,12 @@ int main()
 		player_gravity(lvl,offset_y,velocityY,onGround,gravity,terminal_Velocity, player_x, player_y, cell_size, PlayerHeight, PlayerWidth);
 		PlayerSprite.setPosition(player_x, player_y);
 		window.draw(PlayerSprite);
-		window.draw(ghostSprite);
+		//rendering all ghosts
+		for(int g = 0; g < ghost_count; g++)
+		{
+    		ghostSprite.setPosition(ghostX[g] * cell_size, ghostY[g] * cell_size);
+    		window.draw(ghostSprite);
+		}
 
 		window.display();
 		lvlMusic.stop();
