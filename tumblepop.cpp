@@ -8,7 +8,7 @@
 using namespace sf;
 using namespace std;
 
-int screen_x = 1136;
+int screen_x = 1152;
 int screen_y = 896;
 
 void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSprite,Texture& blockTexture,Sprite& blockSprite, const int height, const int width, const int cell_size)
@@ -49,13 +49,10 @@ void platform(char**lvl, const int height, const int width){
 	{
 		for (int j=0;  j< width; j++)
 		{
-			if (( i==3 || i == 7 || i == 11) && ( j>2 && j<width-3 ) )
+			if (( i==3 || i == 10) && ( j>2 && j<width-6 ) )
 				lvl[i][j] = '#';
-			if ( (i>3 && i<height-2 ) && ( j == width/2 || j == (width/2)-1 ) )
-				lvl[i][j] = '#';
-			if ( (i>4 && i<height-4) && ( j == (width/2)-2 || j == (width/2)+1 ) )
-				lvl[i][j] = '#';
-			if ( (i==5 || i==9) && (j<=4 || j>=width-5) )
+
+			if ( (i==6 || i==9) && (j<=3 || j>=width-4) )
 				lvl[i][j] = '#';
 			
 		}	
@@ -63,9 +60,17 @@ void platform(char**lvl, const int height, const int width){
 }
 
 void jump(bool& onGround, float& velocityY, const float jumpStrength){
+	// It initializes Jump i.e, gives Initial velocity for jump. Rest of motion handling is done in gravity function.
 	if(onGround){
 		velocityY = jumpStrength;
 		onGround = false;
+	}
+}
+
+void fall(bool& onGround, float& player_y, const float jumpStrength, int PlayerHeight, const int cell_size){
+	if(onGround){
+		if (player_y + PlayerHeight < screen_y - (cell_size * 2)) // Clamping down movement, cannot move down if standing on last bottom boundary
+		player_y -= jumpStrength;
 	}
 }
 
@@ -80,34 +85,56 @@ void ghost_move(float& ghost_x, float& ghost_y, int& ghost_direction, float ghos
 
 void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
 {
-	offset_y = player_y;
+    // Store the initial y position of player
+    float original_y = player_y;
 
-	offset_y += velocityY;
+    offset_y = player_y;
+    offset_y += velocityY; 
 
-	char bottom_left_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x ) / cell_size];
-	char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
-	char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
+	bool isJumping = true; // Gravity only acts when player is not on platform i.e, it is in jump.
 
-	if ((bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#'))
-	{
-		onGround = true;
-	}
-	else
-	{
-		player_y = offset_y;
-		onGround = false;
-	}
+    char bottom_left_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x ) / cell_size];
+    char bottom_right_down = lvl[(int)(offset_y  + Pheight) / cell_size][(int)(player_x + Pwidth) / cell_size];
+    char bottom_mid_down = lvl[(int)(offset_y + Pheight) / cell_size][(int)(player_x + Pwidth / 2) / cell_size];
 
-	if (!onGround)
-	{
-		velocityY += gravity;
-		if (velocityY >= terminal_Velocity) velocityY = terminal_Velocity;
-	}
+    // Block below player must be # and the velocity Y of player should be +ve to land on block and stop motion. 
+	// If velocity Y is -ve it means player is moving upwards and platforms check are not required and onGround bool should remain false so that the player does'nt get stuck in the platform.
+    if ( (bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#') && velocityY > 0)
+    {
+        // Calculating the top edge of block where player is standing after moving vertically.
+        float block_top_y = ((int)(offset_y + Pheight) / cell_size) * cell_size;
+        
+        // Checking if the player's bottom edge at the original position was above the block's top edge where player has moved.
+        // It verifies that if player is landing on block and not hitting it from any side. Without this check player can get stuck inside the block if platform is above 3 blocks.
+        if (original_y + Pheight <= block_top_y)
+        {
+            isJumping = false;
+        }
+    }
+																		// BOUNDARY CHECK CLAMP
+																	if (velocityY < 0 && player_y < 64)
+																		velocityY = 0;	
 
-	else
-	{
-		velocityY = 0;
-	}
+    if (!isJumping)
+    {
+        onGround = true;
+    }
+    else
+    {
+        player_y = offset_y;
+        onGround = false;
+    }
+
+    if (!onGround)
+    {
+        velocityY += gravity;
+        if (velocityY >= terminal_Velocity) velocityY = terminal_Velocity;
+    }
+
+    else
+    {
+        velocityY = 0;
+    }
 }
 
 
@@ -146,15 +173,16 @@ int main()
 	lvlMusic.setLoop(true);
 
 	//player data
-	float player_x = 500;
-	float player_y = 150;
+	float player_x = 64;
+	float player_y = 64;
 
 	float speed = 5;
 
-	const float jumpStrength = -16; // Initial jump velocity
+	const float jumpStrength = -20; // Initial jump velocity
 	const float gravity = 1;  // Gravity acceleration
 
 	bool isJumping = false;  // Track if jumping
+	bool isMoving = false; //Motion detection
 
 	bool up_collide = false;
 	bool left_collide = false;
@@ -171,8 +199,10 @@ int main()
 
 	float terminal_Velocity = 20;
 
-	int PlayerHeight = 70;
-	int PlayerWidth = 64;
+	int PlayerHeight = 102;
+	int PlayerWidth = 96;
+
+	int horizontal_index = 0;
 
 	bool up_button = false;
 
@@ -181,7 +211,12 @@ int main()
 	char top_mid = '\0';
 
 	char left_mid = '\0';
+	char left_bottom = '\0';
+	char left_top = '\0';
+
+	char right_top = '\0';
 	char right_mid = '\0';
+	char right_bottom = '\0';
 
 	char bottom_left = '\0';
 	char bottom_right = '\0';
@@ -211,7 +246,7 @@ int main()
 				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
-	PlayerSprite.setScale(2,2);
+	PlayerSprite.setScale(3,3);
 	PlayerSprite.setPosition(player_x, player_y);
 
 
@@ -254,32 +289,56 @@ int main()
 			window.close();
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::Right))
-		{
-			//if(player_x <= screen_x-(PlayerWidth)*1.525)
-			player_x+=speed;
-		}
-
 		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
-			player_x-=speed;
+													//COLLISION CHECK
+			// Checking next bloxk if it is # or not to know whether to stop player or not.									
+			char left_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x - speed) / cell_size];
+			char left_mid = lvl[(int)(player_y + PlayerHeight / 2) / cell_size][(int)(player_x - speed) / cell_size];
+			char left_top = lvl[(int)(player_y) / cell_size][(int)(player_x - speed) / cell_size];
+
+			// Check for movement. If next block is # then don't move the player
+			if (left_mid != '#' && left_bottom != '#' && left_top != '#') {
+				player_x -= speed;
+			}
+			// Now to exactly stop player at 13th block and another check if player is moving left while jumping to start projectile motion.
+			else {
+				if (!(Keyboard::isKeyPressed(Keyboard::Up)))
+					player_x = ( ( (int)(player_x - speed) / cell_size) + 1) * cell_size;
+				else 
+				{
+					if (player_x > cell_size)
+						player_x -= speed;
+				}
+			}
 		}
+
+		if (Keyboard::isKeyPressed(Keyboard::Right))
+		{			
+			right_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
+			right_mid = lvl[(int)(player_y + PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
+			right_top = lvl[(int)(player_y) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
+
+			if(right_mid != '#' && right_bottom != '#' && right_top != '#')
+				player_x += speed;
+			else
+				if (!(Keyboard::isKeyPressed(Keyboard::Up)))
+					player_x = (player_x / (int)cell_size)*cell_size;
+				else
+				{
+					if (player_x + PlayerWidth < screen_x - cell_size - 10)
+						player_x += speed;
+				}
+		}
+
 		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
 			jump(onGround, velocityY, jumpStrength);
 		}
 		if (Keyboard::isKeyPressed(Keyboard::Down))
 		{
-			player_y+=20;
+			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
-
-		if(player_x >= screen_x-(PlayerWidth)*1.525)
-			player_x = screen_x-(PlayerWidth)*1.525;
-
-		if(player_x <= cell_size)
-			player_x = cell_size;
-
-
 
 		window.clear();
 
@@ -303,5 +362,3 @@ int main()
 
 	return 0;
 }
-
-
