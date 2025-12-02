@@ -60,7 +60,7 @@ void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed
         for(int c = 0; c < 2 && g < ghost_count; c++)
         {
             ghostX[g] = (colStart + c * colStep)*64;   // spread horizontally
-            ghostY[g] = spawnRows[r]*64;             // different rows
+            ghostY[g] = (spawnRows[r]*64)-32;             // different rows
             ghostDir[g] = 1;                      // start moving right
             ghostSpeed[g] = 1.2f;
             g++;
@@ -82,7 +82,7 @@ void moveGhosts(char** lvl, int height, int width,
         int ghostPositionY = (int)(ghostY[g] / cell_size);
 
         float predictedX = ghostX[g] + (ghostMoveSpeed[g] * ghostDir[g]);
-        int nextTileX = (int)(predictedX / cell_size);
+        int nextTileX = (int)(predictedX / cell_size)+32;
 
         // 1. Wall check
 		if (ghostDir[g] == -1)
@@ -321,7 +321,7 @@ int main()
 	ghostTex.loadFromFile("Data/ghost.png");
 	ghostSprite.setTexture(ghostTex);
 	ghostSprite.setScale(2,2);
-	ghostSprite.setTextureRect(IntRect(0, 0, 32, 32));
+	ghostSprite.setTextureRect(IntRect(0, 0, 64, 64));
 
 				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
