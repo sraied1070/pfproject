@@ -43,7 +43,7 @@ void boundaries(char**lvl, const int height, const int width){
 	}
 }
 
-void initGhosts(int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], int ghost_count,
+void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count,
 				int ghostTimer[])
 {
     // rows where ghosts can safely stand
@@ -51,7 +51,7 @@ void initGhosts(int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], in
     int rowCount = 4;
 
     int colStart = 3;     // starting column
-    int colStep  = 3;     // spacing between ghosts
+    int colStep  = 10;     // spacing between ghosts
 
     int g = 0;
 
@@ -60,10 +60,10 @@ void initGhosts(int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], in
     {
         for(int c = 0; c < 2 && g < ghost_count; c++)
         {
-            ghostX[g] = colStart + c * colStep;   // spread horizontally
-            ghostY[g] = spawnRows[r];             // different rows
+            ghostX[g] = (colStart + c * colStep)*64;   // spread horizontally
+            ghostY[g] = spawnRows[r]*64;             // different rows
             ghostDir[g] = 1;                      // start moving right
-            ghostSpeed[g] = 30;
+            ghostSpeed[g] = 1.2f;
 			ghostTimer[g] = 0;
             g++;
         }
@@ -71,42 +71,36 @@ void initGhosts(int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], in
 }
 
 void moveGhosts(char** lvl, int height, int width, 
-                int ghostX[], int ghostY[], int ghostDir[], int ghostSpeed[], 
-                int ghost_count, int ghostTimer[])
+                float ghostX[], float ghostY[], int ghostDir[],
+                float ghostMoveSpeed[],
+                int ghost_count)
 {
+    const int cell_size = 64;
+
     for(int g = 0; g < ghost_count; g++)
     {
-		ghostTimer[g]++;
+        int tileX = (int)(ghostX[g] / cell_size);
+        int tileY = (int)(ghostY[g] / cell_size);
 
-        // move only every "ghostSpeed[g]" frames
-        if(ghostTimer[g] < ghostSpeed[g])
-            continue;
+        float predictedX = ghostX[g] + ghostMoveSpeed[g] * ghostDir[g];
+        int nextTileX = (int)(predictedX / cell_size);
 
-		ghostTimer[g]=0;
-
-        int gx = ghostX[g];
-        int gy = ghostY[g];
-        int dir = ghostDir[g];
-
-        int nextX = gx + dir;
-        int nextY = gy;
-
-        //turning around if hitting a wall
-        if (lvl[nextY][nextX] == '#')
+        // 1. Wall check
+        if(lvl[tileY][nextTileX] == '#')
         {
-            ghostDir[g] = -dir;
+            ghostDir[g] *= -1;
             continue;
         }
 
-        //turn around if next tile below is not a block
-        if (lvl[gy + 1][nextX] != '#')
+        // 2. Floor check
+        if(lvl[tileY + 1][nextTileX] != '#')
         {
-            ghostDir[g] = -dir;
+            ghostDir[g] *= -1;
             continue;
         }
 
-        //move ghost
-        ghostX[g] = nextX;
+        // 3. Smooth pixel movement
+        ghostX[g] += ghostMoveSpeed[g] * ghostDir[g];
     }
 }
 
@@ -292,10 +286,10 @@ int main()
 			//GHOST VARIABLES and SPRITE
 	const int ghost_count = 8;
 
-	int ghostX[ghost_count];
-	int ghostY[ghost_count];
+	float ghostX[ghost_count];
+	float ghostY[ghost_count];
 	int ghostDir[ghost_count];   // 1 = right, -1 = left
-	int ghostSpeed[ghost_count];
+	float ghostSpeed[ghost_count];
 	int ghostTimer[ghost_count];
 	initGhosts(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
 
@@ -405,7 +399,7 @@ int main()
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
 		//calling function to move ghosts
-		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
+		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count);
 
 
 		window.clear();
@@ -417,7 +411,7 @@ int main()
 		//rendering all ghosts
 		for(int g = 0; g < ghost_count; g++)
 		{
-    		ghostSprite.setPosition(ghostX[g] * cell_size, ghostY[g] * cell_size);
+    		ghostSprite.setPosition(ghostX[g], ghostY[g]);
     		window.draw(ghostSprite);
 		}
 
