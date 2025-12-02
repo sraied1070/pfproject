@@ -231,7 +231,7 @@ int main()
 	Texture blockTexture;
 	Sprite blockSprite;
 
-	bgTex.loadFromFile("Data/bg.png");
+	bgTex.loadFromFile("Data/bg.jpeg");
 	bgSprite.setTexture(bgTex);
 	bgSprite.setPosition(0,0);
 
