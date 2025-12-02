@@ -43,14 +43,13 @@ void boundaries(char**lvl, const int height, const int width){
 	}
 }
 
-void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count,
-				int ghostTimer[])
+void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count, int ghostTimer[])
 {
     // rows where ghosts can safely stand
-    int spawnRows[4] = {2, 5, 8, 9};  // above platforms at 3, 6, 9, 10
+    int spawnRows[4] = {2, 5, 8, 12};  // above platforms at 3, 6, 9, 10
     int rowCount = 4;
 
-    int colStart = 3;     // starting column
+    int colStart = 4;     // starting column
     int colStep  = 10;     // spacing between ghosts
 
     int g = 0;
@@ -64,7 +63,6 @@ void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed
             ghostY[g] = spawnRows[r]*64;             // different rows
             ghostDir[g] = 1;                      // start moving right
             ghostSpeed[g] = 1.2f;
-			ghostTimer[g] = 0;
             g++;
         }
     }
@@ -76,28 +74,51 @@ void moveGhosts(char** lvl, int height, int width,
                 int ghost_count)
 {
     const int cell_size = 64;
+	const int ghostWidth = 64;
 
     for(int g = 0; g < ghost_count; g++)
     {
-        int tileX = (int)(ghostX[g] / cell_size);
-        int tileY = (int)(ghostY[g] / cell_size);
+        int ghostPositionX = (int)(ghostX[g] / cell_size);
+        int ghostPositionY = (int)(ghostY[g] / cell_size);
 
-        float predictedX = ghostX[g] + ghostMoveSpeed[g] * ghostDir[g];
+        float predictedX = ghostX[g] + (ghostMoveSpeed[g] * ghostDir[g]);
         int nextTileX = (int)(predictedX / cell_size);
 
         // 1. Wall check
-        if(lvl[tileY][nextTileX] == '#')
-        {
-            ghostDir[g] *= -1;
-            continue;
-        }
+		if (ghostDir[g] == -1)
+		{
+			if(lvl[ghostPositionY][nextTileX] == '#')
+			{
+				ghostDir[g] *= -1;
+				continue;
+			}
+		}
+		else
+		{
+			if(lvl[ghostPositionY][nextTileX + 1] == '#')
+			{
+				ghostDir[g] *= -1;
+				continue;
+			}
+		}
 
         // 2. Floor check
-        if(lvl[tileY + 1][nextTileX] != '#')
-        {
-            ghostDir[g] *= -1;
-            continue;
-        }
+		if(ghostDir[g] == 1)
+		{
+			if(lvl[ghostPositionY + 1][nextTileX + 1] != '#')
+			{
+				ghostDir[g] *= -1;
+				continue;
+			}
+		}
+		else
+		{
+			if(lvl[ghostPositionY + 1][nextTileX] != '#')
+			{
+				ghostDir[g] *= -1;
+				continue;
+			}
+		}
 
         // 3. Smooth pixel movement
         ghostX[g] += ghostMoveSpeed[g] * ghostDir[g];
@@ -114,7 +135,7 @@ void platform(char**lvl, const int height, const int width){
 			if (( i==3 || i == 10) && ( j>2 && j<width-6 ) )
 				lvl[i][j] = '#';
 
-			if ( (i==6 || i==9) && (j<=3 || j>=width-4) )
+			if ( (i==6 || i==9) && (j<=6 || j>=width-6) )
 				lvl[i][j] = '#';
 			
 		}	
