@@ -48,7 +48,7 @@ void boundaries(char**lvl, const int height, const int width){
 void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count, int ghostTimer[])
 {
     // rows where ghosts can safely stand
-    int spawnRows[4] = {2, 5, 8, 12};  // above platforms at 3, 6, 9, 10
+    int spawnRows[4] = {2, 5, 9, 12};  // above platforms at 3, 6, 10 and ground
     int rowCount = 4;
 
     int colStart = 4;     // starting column
@@ -70,10 +70,7 @@ void initGhosts(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed
     }
 }
 
-void moveGhosts(char** lvl, int height, int width, 
-                float ghostX[], float ghostY[], int ghostDir[],
-                float ghostMoveSpeed[],
-                int ghost_count)
+void moveGhosts(char** lvl, int height, int width, float ghostX[], float ghostY[], int ghostDir[],float ghostMoveSpeed[],int ghost_count, char ghostFace[])
 {
     const int cell_size = 64;
 	const int ghostWidth = 64;
@@ -89,17 +86,21 @@ void moveGhosts(char** lvl, int height, int width,
         // 1. Wall check
 		if (ghostDir[g] == -1)
 		{
+			ghostFace[g] = 'L';
 			if(lvl[ghostPositionY][nextTileX] == '#')
 			{
 				ghostDir[g] *= -1;
+				ghostFace[g] = 'R';
 				continue;
 			}
 		}
 		else
 		{
+			ghostFace[g] = 'R';
 			if(lvl[ghostPositionY][nextTileX + 1] == '#')
 			{
 				ghostDir[g] *= -1;
+				ghostFace[g] = 'L';
 				continue;
 			}
 		}
@@ -107,17 +108,21 @@ void moveGhosts(char** lvl, int height, int width,
         // 2. Floor check
 		if(ghostDir[g] == 1)
 		{
+			ghostFace[g] = 'R';
 			if(lvl[ghostPositionY + 1][nextTileX + 1] != '#')
 			{
 				ghostDir[g] *= -1;
+				ghostFace[g] = 'L';
 				continue;
 			}
 		}
 		else
 		{
+			ghostFace[g] = 'L';
 			if(lvl[ghostPositionY + 1][nextTileX] != '#')
 			{
 				ghostDir[g] *= -1;
+				ghostFace[g] = 'R';
 				continue;
 			}
 		}
@@ -127,17 +132,15 @@ void moveGhosts(char** lvl, int height, int width,
     }
 }
 
-void initSkeletons(float skeleton_x[], float skeleton_y[],
-                   float skeletonDir[], float skeletonSpeed[],
-                   int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[])
+void initSkeletons(float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[])
 {
     //one skeleton per row
-    int spawnRows[4] = { 2, 5, 8, 12 }; 
+    int spawnRows[4] = { 2, 5, 9, 12 }; 
 
     for (int i = 0; i < skeleton_count; i++)
     {
         skeleton_x[i] = 5 * cell_size;                // same column for all (column 5)
-        skeleton_y[i] = (spawnRows[i] * cell_size)-32;
+        skeleton_y[i] = (spawnRows[i] * cell_size) - 32;
 
         skeletonDir[i] = 1;          // facing right
         skeletonSpeed[i] = 1.0f;// future movement speed
@@ -149,11 +152,7 @@ void initSkeletons(float skeleton_x[], float skeleton_y[],
 
 }
 
-void moveSkeletons(char** lvl, int height, int width,
-                   float skeleton_x[], float skeleton_y[],
-                   float skeletonDir[], float skeletonSpeed[],
-                   int skeletonState[], int skeletonCooldown[],
-                   int skeleton_count, int cell_size)
+void moveSkeletons(char** lvl, int height, int width,float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeletonState[], int skeletonCooldown[],int skeleton_count, int cell_size, char skeletonFace[])
 {
     for (int s = 0; s < skeleton_count; s++)
     {
@@ -183,17 +182,35 @@ void moveSkeletons(char** lvl, int height, int width,
             int tileY = (int)((skeleton_y[s] + 32) / cell_size); // feet
 
             // turn when hitting walls
-            if (lvl[tileY][tileX] == '#')
-            {
-                skeletonDir[s] *= -1;
-            }
-			else if (lvl[tileY+1][tileX]!='#')
-				skeletonDir[s] *= -1;
-			else
-				skeleton_x[s]=nextX;
+			if(skeletonDir[s] == 1)
+			{
+				if (lvl[tileY][tileX+1] == '#')
+				{
+					skeletonDir[s] *= -1;
+				}
+				else if (lvl[tileY+1][tileX+1]!='#')
+				{
+					skeletonDir[s] *= -1;
+				}	
+				else
+					skeleton_x[s]=nextX;			
+			}
+			else if(skeletonDir[s] == -1)
+			{
+				if (lvl[tileY][tileX] == '#')
+				{
+					skeletonDir[s] *= -1;
+				}
+				else if (lvl[tileY+1][tileX]!='#')
+				{
+					skeletonDir[s] *= -1;
+				}
+				else
+					skeleton_x[s]=nextX;
+			} 
         }
 
-        // State 1: STOP
+        	// State 1: STOP
         else if (skeletonState[s] == 1)
         {
 			//stand still
@@ -213,7 +230,12 @@ void moveSkeletons(char** lvl, int height, int width,
                 // attempt climb-up
             }
         }
-    }
+	
+		if (skeletonDir[s] == 1)
+			skeletonFace[s] = 'R';
+		else
+			skeletonFace[s] = 'L';
+	    }
 }
 
 
@@ -223,10 +245,10 @@ void platform(char**lvl, const int height, const int width){
 	{
 		for (int j=0;  j< width; j++)
 		{
-			if (( i==3 || i == 10) && ( j>2 && j<width-6 ) )
+			if (( i==3 ) && ( j>2 && j<width-3 ) )
 				lvl[i][j] = '#';
 
-			if ( (i==6 || i==9) && (j<=6 || j>=width-6) )
+			if ( (i==6 || i==10) && (j<=5 || j>=width-6) )
 				lvl[i][j] = '#';
 			
 		}	
@@ -317,6 +339,8 @@ int main()
 	const int width = 18;
 	char** lvl;
 
+	char playerDirection = '\0';
+
 	//level and background textures and sprites
 	Texture bgTex;
 	Sprite bgSprite;
@@ -404,6 +428,7 @@ int main()
 	int ghostDir[ghost_count];   // 1 = right, -1 = left
 	float ghostSpeed[ghost_count];
 	int ghostTimer[ghost_count];
+	char ghostFace[ghost_count];
 	initGhosts(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
 
 
@@ -412,7 +437,7 @@ int main()
 
 	ghostTex.loadFromFile("Data/ghost.png");
 	ghostSprite.setTexture(ghostTex);
-	ghostSprite.setScale(2,2);
+	ghostSprite.move(32,0);
 	ghostSprite.setTextureRect(IntRect(0, 0, 64, 64));
 
 	//SKELETON VARIABLES
@@ -425,6 +450,7 @@ int main()
 	float skeletonDir[skeleton_count];
 	int skeletonState[skeleton_count];    // 0 = walk, 1 = stop, 2 = vertical move
 	int skeletonCooldown[skeleton_count]; // frames until next decision
+	char skeletonFace[skeleton_count];
 
 	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown);
 	// sprites + texture
@@ -433,7 +459,7 @@ int main()
 
 	skeletonTexture.loadFromFile("Data/Skelton.png");
 	skeletonSprite.setTexture(skeletonTexture);
-	skeletonSprite.setScale(2, 2);
+	//skeletonSprite.setScale(2, 2);
 	skeletonSprite.setTextureRect(IntRect(0, 0, 48, 48));
 
 
@@ -454,10 +480,8 @@ int main()
 	boundaries(lvl, height, width);
 	platform(lvl, height, width);
 
-	lvl[7][7] = '#';
-	lvl[7][8] = '#';
-	lvl[7][9] = '#';
-	lvl[7][10] = '#';
+	lvl[8][8] = '#';
+	lvl[8][9] = '#';
 
 	Event ev;
 	//main loop
@@ -485,6 +509,7 @@ int main()
 
 		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
+			playerDirection = 'L';
 													//COLLISION CHECK
 			// Checking next bloxk if it is # or not to know whether to stop player or not.									
 			char left_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x - speed) / cell_size];
@@ -509,6 +534,7 @@ int main()
 
 		if (Keyboard::isKeyPressed(Keyboard::Right))
 		{			
+			playerDirection = 'R';
 			right_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
 			right_mid = lvl[(int)(player_y + PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
 			right_top = lvl[(int)(player_y) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
@@ -534,25 +560,52 @@ int main()
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
 		//calling function to move ghosts
-		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count);
-		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y,skeletonDir, skeletonSpeed,skeletonState, skeletonCooldown,
-              skeleton_count, cell_size);
+		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
+		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y,skeletonDir, skeletonSpeed,skeletonState, skeletonCooldown,skeleton_count, cell_size, skeletonFace);
 
 		window.clear();
 
 		display_level(window, lvl, bgTex, bgSprite, blockTexture, blockSprite, height, width, cell_size);
 		player_gravity(lvl,offset_y,velocityY,onGround,gravity,terminal_Velocity, player_x, player_y, cell_size, PlayerHeight, PlayerWidth);
 		PlayerSprite.setPosition(player_x, player_y);
+		if (playerDirection == 'R')
+		{
+			PlayerSprite.setScale(-3,3);
+			PlayerSprite.move(PlayerWidth, 0);
+		}
+		else
+			PlayerSprite.setScale(3,3);
+
 		window.draw(PlayerSprite);
 		//rendering all ghosts
 		for(int g = 0; g < ghost_count; g++)
 		{
     		ghostSprite.setPosition(ghostX[g], ghostY[g]);
+			if (ghostFace[g] == 'R')
+			{
+				ghostSprite.setScale(-2,2);
+				ghostSprite.move(96,4);
+			}
+			else
+			{
+				ghostSprite.setScale(2,2);
+				ghostSprite.move(-22,4);
+			}
     		window.draw(ghostSprite);
 		}
 		for(int s = 0; s < skeleton_count; s++)
 		{
     		skeletonSprite.setPosition(skeleton_x[s], skeleton_y[s]);
+			if (skeletonFace[s] == 'R')
+			{
+				skeletonSprite.setScale(-2,3);
+				skeletonSprite.move(96,-48);
+			}
+			else
+			{
+				skeletonSprite.setScale(2,3);
+				skeletonSprite.move(-22,-48);
+			}
     		window.draw(skeletonSprite);
 		}
 
