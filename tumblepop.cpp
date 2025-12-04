@@ -12,7 +12,7 @@ using namespace std;
 
 int screen_x = 1152;
 int screen_y = 896;
-
+void jump(bool& onGround, float& velocityY, const float jumpStrength);
 void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSprite,Texture& blockTexture,Sprite& blockSprite, const int height, const int width, const int cell_size)
 {
 	window.draw(bgSprite);
@@ -132,7 +132,7 @@ void moveGhosts(char** lvl, int height, int width, float ghostX[], float ghostY[
     }
 }
 
-void initSkeletons(float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[])
+void initSkeletons(float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[],bool skeletonOnGround[], float skeletonY_velocity[])
 {
     //one skeleton per row
     int spawnRows[4] = { 2, 5, 9, 12 }; 
@@ -148,95 +148,106 @@ void initSkeletons(float skeleton_x[], float skeleton_y[],float skeletonDir[], f
 		skeletonState[i] = 0;
 		skeletonCooldown[i] = rand() % 60 + 30;   // 0.5–1.5 seconds before changing state
 
+		skeletonOnGround[i] = false;
+        skeletonY_velocity[i]     = 0.0f;
 	}
 
 }
 
-void moveSkeletons(char** lvl, int height, int width,float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeletonState[], int skeletonCooldown[],int skeleton_count, int cell_size, char skeletonFace[])
+void moveSkeletons(char** lvl, int height, int width,
+                   float skeleton_x[], float skeleton_y[],
+                   float skeletonDir[], float skeletonSpeed[],
+                   int skeletonState[], int skeletonCooldown[],
+                   bool skeletonOnGround[], float skeletonVelY[],
+                   int skeleton_count, int cell_size, char skeletonFace[],
+                   const float jumpStrength)
 {
     for (int s = 0; s < skeleton_count; s++)
     {
-        //cooldown before next random decision, added so skeletons dont try and move 60 times a second, it is between 0.66 and 1.56 seconds
+        // cooldown before next random decision, added so skeletons dont go haywire and make 60 decisions every second
         skeletonCooldown[s]--;
 
         if (skeletonCooldown[s] <= 0)
         {
-            int roll = rand() % 100; //evaluating chance 0-99
+            int roll = rand() % 100; // 0–99
 
-            if (roll < 60)
-                skeletonState[s] = 0;            // 60% keep walking
-            else if (roll < 80)
+            if (roll < 50)
+                skeletonState[s] = 0;            // 50% walk
+            else if (roll < 70)
                 skeletonState[s] = 1;            // 20% stop
             else
-                skeletonState[s] = 2;            // 20% try vertical move
+                skeletonState[s] = 2;            // 30% try jump
 
             skeletonCooldown[s] = rand() % 60 + 40;
         }
 
+        int tileX = (int)(skeleton_x[s] / cell_size);
+        int tileY = (int)((skeleton_y[s] + 32) / cell_size); // mid-feet row
+        int belowY = tileY + 1;
+
+        // -------------------------
         // State 0: WALK
+        // -------------------------
         if (skeletonState[s] == 0)
         {
             float nextX = skeleton_x[s] + skeletonDir[s] * skeletonSpeed[s];
+            int nextTileX = (int)(nextX / cell_size);
 
-            int tileX = (int)(nextX / cell_size);
-            int tileY = (int)((skeleton_y[s] + 32) / cell_size); // feet
-
-            // turn when hitting walls
-			if(skeletonDir[s] == 1)
-			{
-				if (lvl[tileY][tileX+1] == '#')
-				{
-					skeletonDir[s] *= -1;
-				}
-				else if (lvl[tileY+1][tileX+1]!='#')
-				{
-					skeletonDir[s] *= -1;
-				}	
-				else
-					skeleton_x[s]=nextX;			
-			}
-			else if(skeletonDir[s] == -1)
-			{
-				if (lvl[tileY][tileX] == '#')
-				{
-					skeletonDir[s] *= -1;
-				}
-				else if (lvl[tileY+1][tileX]!='#')
-				{
-					skeletonDir[s] *= -1;
-				}
-				else
-					skeleton_x[s]=nextX;
-			} 
+            // only wall check here if edge then they walk off and gravity handles drop
+            if (skeletonDir[s] == 1) // moving right
+            {
+                if (nextTileX + 1 >= width ||
+                    lvl[tileY][nextTileX + 1] == '#')
+                {
+                    skeletonDir[s] *= -1;
+                }
+                else
+                {
+                    skeleton_x[s] = nextX;
+                }
+            }
+            else // moving left
+            {
+                if (nextTileX < 0 ||
+                    lvl[tileY][nextTileX] == '#')
+                {
+                    skeletonDir[s] *= -1;
+                }
+                else
+                {
+                    skeleton_x[s] = nextX;
+                }
+            }
         }
 
-        	// State 1: STOP
+        // State 1: STOP
         else if (skeletonState[s] == 1)
         {
-			//stand still
+            // stand still
         }
 
-        // State 2: TRY VERTICAL MOVE
+        // State 2: JUMP (like player)
         else if (skeletonState[s] == 2)
         {
-            int roll = rand() % 2; // 0 = drop, 1 = climb
+            // only jump if standing on something and not on top row
+            if (skeletonOnGround[s] && skeleton_y[s]!=12)
+            {
+                // reuse the jump() function
+                jump(skeletonOnGround[s], skeletonVelY[s], jumpStrength);
+            }
 
-            if (roll == 0)
-            {
-                // attempt drop-down
-            }
-            else
-            {
-                // attempt climb-up
-            }
+            // after one jump attempt, go back to walking
+            skeletonState[s] = 0;
         }
-	
-		if (skeletonDir[s] == 1)
-			skeletonFace[s] = 'R';
-		else
-			skeletonFace[s] = 'L';
-	    }
+
+        // facing direction for sprite flipping
+        if (skeletonDir[s] == 1)
+            skeletonFace[s] = 'R';
+        else
+            skeletonFace[s] = 'L';
+    }
 }
+
 
 
 				//PLATFORM FORMATION
@@ -323,6 +334,25 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
         velocityY = 0;
     }
 }
+void applySkeletonGravity(char** lvl,
+                          float skeleton_x[], float skeleton_y[],
+                          float skeletonVelY[], bool skeletonOnGround[],
+                          int skeleton_count,
+                          const float gravity, float terminal_velocity,
+                          const int cell_size)
+{
+    // approximate skeleton size in pixels for collision
+    int SkelHeight = 64; // fits inside 64x64 tile
+    int SkelWidth  = 48; // sprite width
+
+    for (int s = 0; s < skeleton_count; s++)
+    {
+        float offset_y_dummy = 0.0f;
+        player_gravity(lvl,offset_y_dummy,skeletonVelY[s],skeletonOnGround[s],gravity,terminal_velocity,
+						skeleton_x[s],skeleton_y[s],cell_size,SkelHeight,SkelWidth);
+    }
+}
+
 
 
 int main()
@@ -451,8 +481,11 @@ int main()
 	int skeletonState[skeleton_count];    // 0 = walk, 1 = stop, 2 = vertical move
 	int skeletonCooldown[skeleton_count]; // frames until next decision
 	char skeletonFace[skeleton_count];
+	bool  skeletonOnGround[skeleton_count];
+	float skeletonY_velocity[skeleton_count];
 
-	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown);
+
+	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown,skeletonOnGround,skeletonY_velocity);
 	// sprites + texture
 	Texture skeletonTexture;
 	Sprite skeletonSprite;
@@ -561,7 +594,19 @@ int main()
 		}
 		//calling function to move ghosts
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
-		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y,skeletonDir, skeletonSpeed,skeletonState, skeletonCooldown,skeleton_count, cell_size, skeletonFace);
+		moveSkeletons(lvl, height, width,
+              skeleton_x, skeleton_y,
+              skeletonDir, skeletonSpeed,
+              skeletonState, skeletonCooldown,
+              skeletonOnGround, skeletonY_velocity,
+              skeleton_count, cell_size,
+              skeletonFace, jumpStrength);
+		applySkeletonGravity(lvl,
+                     skeleton_x, skeleton_y,
+                     skeletonY_velocity, skeletonOnGround,
+                     skeleton_count,
+                     gravity, terminal_Velocity,
+                     cell_size);
 
 		window.clear();
 
