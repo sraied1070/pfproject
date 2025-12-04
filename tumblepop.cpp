@@ -4,6 +4,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <SFML/Window.hpp>
+#include <ctime>
+#include <cstdlib>
 
 using namespace sf;
 using namespace std;
@@ -125,6 +127,95 @@ void moveGhosts(char** lvl, int height, int width,
     }
 }
 
+void initSkeletons(float skeleton_x[], float skeleton_y[],
+                   float skeletonDir[], float skeletonSpeed[],
+                   int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[])
+{
+    //one skeleton per row
+    int spawnRows[4] = { 2, 5, 8, 12 }; 
+
+    for (int i = 0; i < skeleton_count; i++)
+    {
+        skeleton_x[i] = 5 * cell_size;                // same column for all (column 5)
+        skeleton_y[i] = (spawnRows[i] * cell_size)-32;
+
+        skeletonDir[i] = 1;          // facing right
+        skeletonSpeed[i] = 1.0f;// future movement speed
+		
+		skeletonState[i] = 0;
+		skeletonCooldown[i] = rand() % 60 + 30;   // 0.5–1.5 seconds before changing state
+
+	}
+
+}
+
+void moveSkeletons(char** lvl, int height, int width,
+                   float skeleton_x[], float skeleton_y[],
+                   float skeletonDir[], float skeletonSpeed[],
+                   int skeletonState[], int skeletonCooldown[],
+                   int skeleton_count, int cell_size)
+{
+    for (int s = 0; s < skeleton_count; s++)
+    {
+        //cooldown before next random decision, added so skeletons dont try and move 60 times a second, it is between 0.66 and 1.56 seconds
+        skeletonCooldown[s]--;
+
+        if (skeletonCooldown[s] <= 0)
+        {
+            int roll = rand() % 100; //evaluating chance 0-99
+
+            if (roll < 60)
+                skeletonState[s] = 0;            // 60% keep walking
+            else if (roll < 80)
+                skeletonState[s] = 1;            // 20% stop
+            else
+                skeletonState[s] = 2;            // 20% try vertical move
+
+            skeletonCooldown[s] = rand() % 60 + 40;
+        }
+
+        // State 0: WALK
+        if (skeletonState[s] == 0)
+        {
+            float nextX = skeleton_x[s] + skeletonDir[s] * skeletonSpeed[s];
+
+            int tileX = (int)(nextX / cell_size);
+            int tileY = (int)((skeleton_y[s] + 32) / cell_size); // feet
+
+            // turn when hitting walls
+            if (lvl[tileY][tileX] == '#')
+            {
+                skeletonDir[s] *= -1;
+            }
+			else if (lvl[tileY+1][tileX]!='#')
+				skeletonDir[s] *= -1;
+			else
+				skeleton_x[s]=nextX;
+        }
+
+        // State 1: STOP
+        else if (skeletonState[s] == 1)
+        {
+			//stand still
+        }
+
+        // State 2: TRY VERTICAL MOVE
+        else if (skeletonState[s] == 2)
+        {
+            int roll = rand() % 2; // 0 = drop, 1 = climb
+
+            if (roll == 0)
+            {
+                // attempt drop-down
+            }
+            else
+            {
+                // attempt climb-up
+            }
+        }
+    }
+}
+
 
 				//PLATFORM FORMATION
 void platform(char**lvl, const int height, const int width){
@@ -215,6 +306,7 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
 int main()
 {
 
+	srand(time(NULL));
 	RenderWindow window(VideoMode(screen_x, screen_y), "Tumble-POP", Style::Resize);
 	window.setVerticalSyncEnabled(true);
 	window.setFramerateLimit(60);
@@ -323,6 +415,28 @@ int main()
 	ghostSprite.setScale(2,2);
 	ghostSprite.setTextureRect(IntRect(0, 0, 64, 64));
 
+	//SKELETON VARIABLES
+	const int skeleton_count = 4;
+
+	// positions
+	float skeleton_x[skeleton_count];
+	float skeleton_y[skeleton_count];
+	float skeletonSpeed[skeleton_count];
+	float skeletonDir[skeleton_count];
+	int skeletonState[skeleton_count];    // 0 = walk, 1 = stop, 2 = vertical move
+	int skeletonCooldown[skeleton_count]; // frames until next decision
+
+	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown);
+	// sprites + texture
+	Texture skeletonTexture;
+	Sprite skeletonSprite;
+
+	skeletonTexture.loadFromFile("Data/Skelton.png");
+	skeletonSprite.setTexture(skeletonTexture);
+	skeletonSprite.setScale(2, 2);
+	skeletonSprite.setTextureRect(IntRect(0, 0, 48, 48));
+
+
 				//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
@@ -421,7 +535,8 @@ int main()
 		}
 		//calling function to move ghosts
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count);
-
+		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y,skeletonDir, skeletonSpeed,skeletonState, skeletonCooldown,
+              skeleton_count, cell_size);
 
 		window.clear();
 
@@ -434,6 +549,11 @@ int main()
 		{
     		ghostSprite.setPosition(ghostX[g], ghostY[g]);
     		window.draw(ghostSprite);
+		}
+		for(int s = 0; s < skeleton_count; s++)
+		{
+    		skeletonSprite.setPosition(skeleton_x[s], skeleton_y[s]);
+    		window.draw(skeletonSprite);
 		}
 
 		window.display();
