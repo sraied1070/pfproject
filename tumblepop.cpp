@@ -77,6 +77,10 @@ void moveGhosts(char** lvl, int height, int width, float ghostX[], float ghostY[
 
     for(int g = 0; g < ghost_count; g++)
     {
+
+		if(ghostX[g] == 0 && ghostY[g] == 0)  // Add this
+        continue;
+
         int ghostPositionX = (int)(ghostX[g] / cell_size);
         int ghostPositionY = (int)(ghostY[g] / cell_size);
 
@@ -148,22 +152,19 @@ void initSkeletons(float skeleton_x[], float skeleton_y[],float skeletonDir[], f
 		skeletonState[i] = 0;
 		skeletonCooldown[i] = rand() % 60 + 30;   // 0.5–1.5 seconds before changing state
 
-		skeletonOnGround[i] = false;
+		skeletonOnGround[i] = true;
         skeletonY_velocity[i]     = 0.0f;
 	}
 
 }
 
-void moveSkeletons(char** lvl, int height, int width,
-                   float skeleton_x[], float skeleton_y[],
-                   float skeletonDir[], float skeletonSpeed[],
-                   int skeletonState[], int skeletonCooldown[],
-                   bool skeletonOnGround[], float skeletonVelY[],
-                   int skeleton_count, int cell_size, char skeletonFace[],
-                   const float jumpStrength)
+void moveSkeletons(char** lvl, int height, int width,float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeletonState[], int skeletonCooldown[],bool skeletonOnGround[], float skeletonVelY[],int skeleton_count, int cell_size, char skeletonFace[],const float jumpStrength)
 {
     for (int s = 0; s < skeleton_count; s++)
     {
+
+    if(skeleton_x[s] == 0 && skeleton_y[s] == 0)  // Add this
+        continue; 
         // cooldown before next random decision, added so skeletons dont go haywire and make 60 decisions every second
         skeletonCooldown[s]--;
 
@@ -185,9 +186,7 @@ void moveSkeletons(char** lvl, int height, int width,
         int tileY = (int)((skeleton_y[s] + 32) / cell_size); // mid-feet row
         int belowY = tileY + 1;
 
-        // -------------------------
         // State 0: WALK
-        // -------------------------
         if (skeletonState[s] == 0)
         {
             float nextX = skeleton_x[s] + skeletonDir[s] * skeletonSpeed[s];
@@ -196,8 +195,7 @@ void moveSkeletons(char** lvl, int height, int width,
             // only wall check here if edge then they walk off and gravity handles drop
             if (skeletonDir[s] == 1) // moving right
             {
-                if (nextTileX + 1 >= width ||
-                    lvl[tileY][nextTileX + 1] == '#')
+                if (nextTileX + 1 >= width || lvl[tileY][nextTileX + 1] == '#')
                 {
                     skeletonDir[s] *= -1;
                 }
@@ -208,12 +206,11 @@ void moveSkeletons(char** lvl, int height, int width,
             }
             else // moving left
             {
-                if (nextTileX < 0 ||
-                    lvl[tileY][nextTileX] == '#')
+                if (nextTileX < 0 || lvl[tileY][nextTileX] == '#')
                 {
                     skeletonDir[s] *= -1;
                 }
-                else
+                else				
                 {
                     skeleton_x[s] = nextX;
                 }
@@ -233,7 +230,7 @@ void moveSkeletons(char** lvl, int height, int width,
             if (skeletonOnGround[s] && skeleton_y[s]!=12)
             {
                 // reuse the jump() function
-                jump(skeletonOnGround[s], skeletonVelY[s], jumpStrength);
+                jump(skeletonOnGround[s], skeletonVelY[s], jumpStrength*1.2);
             }
 
             // after one jump attempt, go back to walking
@@ -247,8 +244,6 @@ void moveSkeletons(char** lvl, int height, int width,
             skeletonFace[s] = 'L';
     }
 }
-
-
 
 				//PLATFORM FORMATION
 void platform(char**lvl, const int height, const int width){
@@ -334,25 +329,158 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
         velocityY = 0;
     }
 }
-void applySkeletonGravity(char** lvl,
-                          float skeleton_x[], float skeleton_y[],
-                          float skeletonVelY[], bool skeletonOnGround[],
-                          int skeleton_count,
-                          const float gravity, float terminal_velocity,
-                          const int cell_size)
-{
-    // approximate skeleton size in pixels for collision
-    int SkelHeight = 64; // fits inside 64x64 tile
+
+void applySkeletonGravity(char** lvl,float skeleton_x[], float skeleton_y[],float skeletonVelY[], bool skeletonOnGround[],int skeleton_count,const float gravity, float terminal_velocity,const int cell_size){
+    // Approximate skeleton size in pixels for collision
+    int SkelHeight = 96; // fits inside 64x64 tile
     int SkelWidth  = 48; // sprite width
 
     for (int s = 0; s < skeleton_count; s++)
     {
+		if(skeleton_x[s] == 0 && skeleton_y[s] == 0)  // Add this
+        continue;
         float offset_y_dummy = 0.0f;
-        player_gravity(lvl,offset_y_dummy,skeletonVelY[s],skeletonOnGround[s],gravity,terminal_velocity,
-						skeleton_x[s],skeleton_y[s],cell_size,SkelHeight,SkelWidth);
+        player_gravity(lvl,offset_y_dummy,skeletonVelY[s],skeletonOnGround[s],gravity,terminal_velocity, skeleton_x[s], skeleton_y[s], cell_size, SkelHeight, SkelWidth);
     }
 }
 
+void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], 
+            float vaccumForce, int vaccumPower, char playerDirection, float player_x, float player_y, 
+            int PlayerWidth, const int cell_size, int ghost_count, int skeleton_count)
+{
+    // Calculate player's block position
+    int playerBlockX = (int)(player_x / cell_size);
+    int playerBlockY = (int)(player_y / cell_size);
+    
+    // Define vacuum range based on player direction
+    int vaccumStartBlock, vaccumEndBlock;
+    
+    if (playerDirection == 'R')
+    {
+        // Vacuum extends to the right
+        vaccumStartBlock = playerBlockX;
+        vaccumEndBlock = playerBlockX + vaccumPower;
+    }
+    else if (playerDirection == 'L')
+    {
+        // Vacuum extends to the left
+        vaccumStartBlock = playerBlockX - vaccumPower;
+        vaccumEndBlock = playerBlockX;
+    }
+    else
+    {
+        // No valid direction, return early
+        return;
+    }
+    
+    // Process GHOSTS
+    for (int g = 0; g < ghost_count; g++)
+    {
+        // Skip if ghost is already captured (coordinate is 0)
+        if (ghostX[g] == 0 && ghostY[g] == 0)
+            continue;
+        
+        // Calculate ghost's block position
+        int ghostBlockX = (int)(ghostX[g] / cell_size);
+        int ghostBlockY = (int)(ghostY[g] / cell_size);
+        
+        // Check if ghost is in the same row (or close enough vertically)
+        if (abs(ghostBlockY - playerBlockY) <= 1)
+        {
+            // Check if ghost is within vacuum range
+            if (ghostBlockX >= vaccumStartBlock && ghostBlockX <= vaccumEndBlock)
+            {
+                // Apply suction force towards player
+                if (playerDirection == 'R')
+                {
+                    // Player facing right, pull ghost towards player (move left)
+                    if (ghostX[g] > player_x)
+                        ghostX[g] += vaccumForce; // vaccumForce is negative, moves left
+                }
+                else if (playerDirection == 'L')
+                {
+                    // Player facing left, pull ghost towards player (move right)
+                    if (ghostX[g] < player_x)
+                        ghostX[g] -= vaccumForce; // -(-3) = +3, moves right
+                }
+                
+                // Check if ghost has reached the player
+                if (playerDirection == 'R')
+                {
+                    if (ghostX[g] <= player_x + PlayerWidth)
+                    {
+                        // Ghost captured! Set to zero
+                        ghostX[g] = 0;
+                        ghostY[g] = 0;
+                    }
+                }
+                else if (playerDirection == 'L')
+                {
+                    if (ghostX[g] >= player_x)
+                    {
+                        // Ghost captured! Set to zero
+                        ghostX[g] = 0;
+                        ghostY[g] = 0;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Process SKELETONS
+    for (int s = 0; s < skeleton_count; s++)
+    {
+        // Skip if skeleton is already captured (coordinate is 0)
+        if (skeleton_x[s] == 0 && skeleton_y[s] == 0)
+            continue;
+        
+        // Calculate skeleton's block position
+        int skeletonBlockX = (int)(skeleton_x[s] / cell_size);
+        int skeletonBlockY = (int)(skeleton_y[s] / cell_size);
+        
+        // Check if skeleton is in the same row (or close enough vertically)
+        if (abs(skeletonBlockY - playerBlockY) <= 1)
+        {
+            // Check if skeleton is within vacuum range
+            if (skeletonBlockX >= vaccumStartBlock && skeletonBlockX <= vaccumEndBlock)
+            {
+                // Apply suction force towards player
+                if (playerDirection == 'R')
+                {
+                    // Player facing right, pull skeleton towards player (move left)
+                    if (skeleton_x[s] > player_x)
+                        skeleton_x[s] += vaccumForce; // vaccumForce is negative, moves left
+                }
+                else if (playerDirection == 'L')
+                {
+                    // Player facing left, pull skeleton towards player (move right)
+                    if (skeleton_x[s] < player_x)
+                        skeleton_x[s] -= vaccumForce; // -(-3) = +3, moves right
+                }
+                
+                // Check if skeleton has reached the player
+                if (playerDirection == 'R')
+                {
+                    if (skeleton_x[s] <= player_x + PlayerWidth)
+                    {
+                        // Skeleton captured! Set to zero
+                        skeleton_x[s] = 0;
+                        skeleton_y[s] = 0;
+                    }
+                }
+                else if (playerDirection == 'L')
+                {
+                    if (skeleton_x[s] >= player_x)
+                    {
+                        // Skeleton captured! Set to zero
+                        skeleton_x[s] = 0;
+                        skeleton_y[s] = 0;
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 int main()
@@ -450,6 +578,12 @@ int main()
 	char top_mid_up = '\0';
 	char top_left_up = '\0';
 
+			//VACCUM VARIABLES
+	float vaccumForce = -8.0f;
+	float vaccumRange = 64.0f;
+	float vaccumPower = 3.0f;
+	bool vaccumActive = false;
+
 			//GHOST VARIABLES and SPRITE
 	const int ghost_count = 8;
 
@@ -486,6 +620,7 @@ int main()
 
 
 	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown,skeletonOnGround,skeletonY_velocity);
+	
 	// sprites + texture
 	Texture skeletonTexture;
 	Sprite skeletonSprite;
@@ -533,6 +668,8 @@ int main()
 			}
 
 		}
+
+		vaccumActive = false;
 
 		//presing escape to close
 		if (Keyboard::isKeyPressed(Keyboard::Escape))
@@ -592,21 +729,24 @@ int main()
 		{
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
+
+	    if (Keyboard::isKeyPressed(Keyboard::Space))
+        {
+            vaccumActive = true;
+        }
+
+		if (Keyboard::isKeyPressed(Keyboard::Space))
+		{
+			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, 
+				vaccumForce, (int)vaccumPower, playerDirection, 
+				player_x, player_y, PlayerWidth, cell_size, 
+				ghost_count, skeleton_count);
+		}
+
 		//calling function to move ghosts
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
-		moveSkeletons(lvl, height, width,
-              skeleton_x, skeleton_y,
-              skeletonDir, skeletonSpeed,
-              skeletonState, skeletonCooldown,
-              skeletonOnGround, skeletonY_velocity,
-              skeleton_count, cell_size,
-              skeletonFace, jumpStrength);
-		applySkeletonGravity(lvl,
-                     skeleton_x, skeleton_y,
-                     skeletonY_velocity, skeletonOnGround,
-                     skeleton_count,
-                     gravity, terminal_Velocity,
-                     cell_size);
+		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y, skeletonDir, skeletonSpeed, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity, skeleton_count, cell_size, skeletonFace, jumpStrength);
+		applySkeletonGravity(lvl, skeleton_x, skeleton_y, skeletonY_velocity, skeletonOnGround, skeleton_count, gravity, terminal_Velocity, cell_size);
 
 		window.clear();
 
@@ -625,6 +765,9 @@ int main()
 		//rendering all ghosts
 		for(int g = 0; g < ghost_count; g++)
 		{
+			if (ghostX[g] == 0 && ghostY[g] == 0)
+        	continue;
+
     		ghostSprite.setPosition(ghostX[g], ghostY[g]);
 			if (ghostFace[g] == 'R')
 			{
@@ -640,6 +783,8 @@ int main()
 		}
 		for(int s = 0; s < skeleton_count; s++)
 		{
+			if (skeleton_x[s] == 0 && skeleton_y[s] == 0)
+        	continue;
     		skeletonSprite.setPosition(skeleton_x[s], skeleton_y[s]);
 			if (skeletonFace[s] == 'R')
 			{
