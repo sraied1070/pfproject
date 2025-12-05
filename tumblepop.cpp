@@ -351,6 +351,8 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
     // Calculate player's block position
     int playerBlockX = (int)(player_x / cell_size);
     int playerBlockY = (int)(player_y / cell_size);
+
+	bool flag = false;
     
 		// CLamping the vaccum range
     int vaccumStartBlock, vaccumEndBlock;
@@ -364,6 +366,16 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
     {
         vaccumStartBlock = playerBlockX - vaccumPower;
         vaccumEndBlock = playerBlockX;
+    }
+	else if (playerDirection == 'U')
+    {
+        vaccumStartBlock = playerBlockY - vaccumPower;
+        vaccumEndBlock = playerBlockY;
+    }
+	else if (playerDirection == 'D')
+    {
+        vaccumStartBlock = playerBlockY + vaccumPower;
+        vaccumEndBlock = playerBlockY;
     }
     else
     {
@@ -382,10 +394,18 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         int ghostblockY = (int)(ghostY[g] / cell_size);
         
         // Check if ghost is within the vaccum range of player
-        if (( (player_y-ghostY[g]>=-vaccumRange) && (player_y-ghostY[g]<=0) )||( (player_y-ghostY[g]<=vaccumRange) && (player_y-ghostY[g]>=0) ))
+		if (playerDirection=='R' || playerDirection=='L'){
+        	if (( (player_y-ghostY[g]>=-vaccumRange) && (player_y-ghostY[g]<=0) )||( (player_y-ghostY[g]<=vaccumRange) && (player_y-ghostY[g]>=0) ))
+				flag = true;
+		}
+		else if (playerDirection=='U' || playerDirection=='D'){
+			if (( (player_x-ghostX[g]>=-vaccumRange) && (player_x-ghostX[g]<=0) )||( (player_x-ghostX[g]<=vaccumRange) && (player_x-ghostX[g]>=0) ))
+				flag = true;
+		}
+		if (flag)
         {
             // Check if ghost is within vacuum Power
-            if (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock)
+            if ( (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock) || (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock) )
             {
 							// PULL GHOST TOWARDS THE PLAYER
                 if (playerDirection == 'R')
@@ -397,6 +417,16 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                 {
                     if (ghostX[g] < player_x)
                         ghostX[g] -= vaccumForce;
+                }
+				else if (playerDirection == 'U')
+                {
+                    if (ghostY[g] < player_y && (ghostX[g] <= player_x+PlayerWidth && ghostX[g]>= player_x) )
+                        ghostY[g] -= vaccumForce;
+                }
+				else if (playerDirection == 'D')
+                {
+                    if (ghostY[g] > player_x)
+                        ghostY[g] += vaccumForce;
                 }
                 
                 // Checking if ghost has reached the vaccum nozzle to suck it inside the bag.
@@ -411,6 +441,22 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                 else if (playerDirection == 'L')
                 {
                     if (ghostX[g] >= player_x)
+                    {
+                        ghostX[g] = 0;
+                        ghostY[g] = 0;
+                    }
+                }
+				else if (playerDirection == 'U')
+				{
+					if ( (ghostY[g] < player_y) && (ghostY[g] >= player_y - 10) && (ghostX[g] <= player_x+PlayerWidth && ghostX[g]>= player_x) )
+					{
+						ghostX[g] = 0;
+						ghostY[g] = 0;
+					}
+				}
+				else if (playerDirection == 'D')
+                {
+                    if (ghostY[g] <= player_y)
                     {
                         ghostX[g] = 0;
                         ghostY[g] = 0;
@@ -662,7 +708,7 @@ int main()
 			window.close();
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::Left))
+		if ( (Keyboard::isKeyPressed(Keyboard::Left)) || (Keyboard::isKeyPressed(Keyboard::A)) )
 		{
 			playerDirection = 'L';
 													//COLLISION CHECK
@@ -687,7 +733,7 @@ int main()
 			}
 		}
 
-		if (Keyboard::isKeyPressed(Keyboard::Right))
+		if ( (Keyboard::isKeyPressed(Keyboard::Right)) || (Keyboard::isKeyPressed(Keyboard::D)) )
 		{			
 			playerDirection = 'R';
 			right_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
@@ -713,6 +759,16 @@ int main()
 		if (Keyboard::isKeyPressed(Keyboard::Down))
 		{
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
+		}
+
+		if (Keyboard::isKeyPressed(Keyboard::W))
+		{
+			playerDirection = 'U';
+		}
+
+		if (Keyboard::isKeyPressed(Keyboard::S))
+		{
+			playerDirection = 'D';
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Space))
