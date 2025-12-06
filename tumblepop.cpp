@@ -346,15 +346,13 @@ void applySkeletonGravity(char** lvl,float skeleton_x[], float skeleton_y[],floa
 
 void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], 
             float vaccumForce, int vaccumPower, float vaccumRange, char playerDirection, float player_x, float player_y, 
-            int PlayerWidth, const int cell_size, int ghost_count, int skeleton_count)
+            int PlayerWidth, int PlayerHeight, const int cell_size, int ghost_count, int skeleton_count, int& bag)
 {
     // Calculate player's block position
     int playerBlockX = (int)(player_x / cell_size);
     int playerBlockY = (int)(player_y / cell_size);
-
-	bool flag = false;
     
-		// CLamping the vaccum range
+    // Define vacuum range based on player direction
     int vaccumStartBlock, vaccumEndBlock;
     
     if (playerDirection == 'R')
@@ -367,25 +365,25 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         vaccumStartBlock = playerBlockX - vaccumPower;
         vaccumEndBlock = playerBlockX;
     }
-	else if (playerDirection == 'U')
+    else if (playerDirection == 'U')
     {
         vaccumStartBlock = playerBlockY - vaccumPower;
         vaccumEndBlock = playerBlockY;
     }
-	else if (playerDirection == 'D')
+    else if (playerDirection == 'D')
     {
-        vaccumStartBlock = playerBlockY + vaccumPower;
-        vaccumEndBlock = playerBlockY;
+        vaccumStartBlock = playerBlockY;
+        vaccumEndBlock = playerBlockY + vaccumPower;
     }
     else
     {
         return;
     }
     
-    															// GHOSTS SUCTION
+    // GHOSTS SUCTION
     for (int g = 0; g < ghost_count; g++)
     {
-        // Skip the iteration if ghost is already captured.
+        // Skip the iteration if ghost is already captured
         if (ghostX[g] == 0 && ghostY[g] == 0)
             continue;
         
@@ -393,123 +391,216 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         int ghostblockX = (int)(ghostX[g] / cell_size);
         int ghostblockY = (int)(ghostY[g] / cell_size);
         
-        // Check if ghost is within the vaccum range of player
-		if (playerDirection=='R' || playerDirection=='L'){
-        	if (( (player_y-ghostY[g]>=-vaccumRange) && (player_y-ghostY[g]<=0) )||( (player_y-ghostY[g]<=vaccumRange) && (player_y-ghostY[g]>=0) ))
-				flag = true;
+        bool inRange = false;
+        bool inPower = false;
+        
+        // Check based on direction
+        if (playerDirection == 'R')
+		{
+			// Check if ghost is within vaccumRange vertically (without abs)
+			if ((player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) || 
+				(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
+				inRange = true;
+			
+			if (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock && ghostX[g] > player_x)
+				inPower = true;
 		}
-		else if (playerDirection=='U' || playerDirection=='D'){
-			if (( (player_x-ghostX[g]>=-vaccumRange) && (player_x-ghostX[g]<=0) )||( (player_x-ghostX[g]<=vaccumRange) && (player_x-ghostX[g]>=0) ))
-				flag = true;
+        else if (playerDirection == 'L')
+		{
+			// Check if ghost is within vaccumRange vertically (without abs)
+			if ((player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) || 
+				(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
+				inRange = true;
+			
+			if (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock && ghostX[g] < player_x)
+				inPower = true;
 		}
-		if (flag)
+        else if (playerDirection == 'U')
+		{
+			// Check if ghost is within vaccumRange horizontally (without abs)
+			if ((player_x - ghostX[g] <= vaccumRange && player_x - ghostX[g] >= 0) || 
+				(ghostX[g] - player_x <= vaccumRange && ghostX[g] - player_x >= 0))
+				inRange = true;
+			
+			if (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock && ghostY[g] < player_y)
+				inPower = true;
+		}
+        else if (playerDirection == 'D')
+		{
+			// Check if ghost is within vaccumRange horizontally (without abs)
+			if ((player_x - ghostX[g] <= vaccumRange && player_x - ghostX[g] >= 0) || 
+				(ghostX[g] - player_x <= vaccumRange && ghostX[g] - player_x >= 0))
+				inRange = true;
+			
+			if (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock && ghostY[g] > player_y)
+				inPower = true;
+		}
+        
+        // Only apply vacuum if ghost is both in range AND in power
+        if (inRange && inPower)
         {
-            // Check if ghost is within vacuum Power
-            if ( (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock) || (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock) )
+            // PULL GHOST TOWARDS THE PLAYER
+            if (playerDirection == 'R')
             {
-							// PULL GHOST TOWARDS THE PLAYER
-                if (playerDirection == 'R')
+                ghostX[g] += vaccumForce; // vaccumForce is negative, moves left
+            }
+            else if (playerDirection == 'L')
+            {
+                ghostX[g] -= vaccumForce; // subtract negative = moves right
+            }
+            else if (playerDirection == 'U')
+            {
+                ghostY[g] -= vaccumForce; // subtract negative = moves down
+            }
+            else if (playerDirection == 'D')
+            {
+                ghostY[g] += vaccumForce; // vaccumForce is negative, moves up
+            }
+            
+            // Check if ghost has reached the player to capture it
+            if (playerDirection == 'R')
+            {
+                if (ghostX[g] <= player_x + PlayerWidth)
                 {
-                    if (ghostX[g] > player_x)
-                        ghostX[g] += vaccumForce;
+                    ghostX[g] = 0;
+                    ghostY[g] = 0;
+					bag++;
                 }
-                else if (playerDirection == 'L')
+            }
+            else if (playerDirection == 'L')
+            {
+                if (ghostX[g] >= player_x)
                 {
-                    if (ghostX[g] < player_x)
-                        ghostX[g] -= vaccumForce;
+                    ghostX[g] = 0;
+                    ghostY[g] = 0;
+					bag++;
                 }
-				else if (playerDirection == 'U')
+            }
+            else if (playerDirection == 'U')
+            {
+                if (ghostY[g] >= player_y - 10)
                 {
-                    if (ghostY[g] < player_y && (ghostX[g] <= player_x+PlayerWidth && ghostX[g]>= player_x) )
-                        ghostY[g] -= vaccumForce;
+                    ghostX[g] = 0;
+                    ghostY[g] = 0;
+					bag++;
                 }
-				else if (playerDirection == 'D')
+            }
+            else if (playerDirection == 'D')
+            {
+                if (ghostY[g] <= player_y + PlayerHeight)
                 {
-                    if (ghostY[g] > player_x)
-                        ghostY[g] += vaccumForce;
-                }
-                
-                // Checking if ghost has reached the vaccum nozzle to suck it inside the bag.
-                if (playerDirection == 'R')
-                {
-                    if (ghostX[g] <= player_x + PlayerWidth)
-                    {
-                        ghostX[g] = 0;
-                        ghostY[g] = 0;
-                    }
-                }
-                else if (playerDirection == 'L')
-                {
-                    if (ghostX[g] >= player_x)
-                    {
-                        ghostX[g] = 0;
-                        ghostY[g] = 0;
-                    }
-                }
-				else if (playerDirection == 'U')
-				{
-					if ( (ghostY[g] < player_y) && (ghostY[g] >= player_y - 10) && (ghostX[g] <= player_x+PlayerWidth && ghostX[g]>= player_x) )
-					{
-						ghostX[g] = 0;
-						ghostY[g] = 0;
-					}
-				}
-				else if (playerDirection == 'D')
-                {
-                    if (ghostY[g] <= player_y)
-                    {
-                        ghostX[g] = 0;
-                        ghostY[g] = 0;
-                    }
+                    ghostX[g] = 0;
+                    ghostY[g] = 0;
+					bag++;
                 }
             }
         }
     }
     
-    																	//SKELETONS SUCTION
+    // SKELETONS SUCTION (same logic as ghosts)
     for (int s = 0; s < skeleton_count; s++)
     {
-        // Skip iteration if skeleton is already captured
+        // Skip the iteration if skeleton is already captured
         if (skeleton_x[s] == 0 && skeleton_y[s] == 0)
             continue;
         
-        // Calculating skeleton's block number
-        int skeletonBlockX = (int)(skeleton_x[s] / cell_size);
-        int skeletonBlockY = (int)(skeleton_y[s] / cell_size);
+        // Calculating the block number of skeleton
+        int skeletonblockX = (int)(skeleton_x[s] / cell_size);
+        int skeletonblockY = (int)(skeleton_y[s] / cell_size);
         
-        // Range check
-        if (( (player_y-skeleton_y[s]>=-vaccumRange) && (player_y-skeleton_y[s]<=0) )||( (player_y-skeleton_y[s]<=vaccumRange) && (player_y-skeleton_y[s]>=0) ))
+        bool inRange = false;
+        bool inPower = false;
+        
+        // Check based on direction
+        if (playerDirection == 'R')
         {
-            // Power check
-            if (skeletonBlockX >= vaccumStartBlock && skeletonBlockX <= vaccumEndBlock)
+            if (abs(player_y - skeleton_y[s]) <= vaccumRange)
+                inRange = true;
+            
+            if (skeletonblockX >= vaccumStartBlock && skeletonblockX <= vaccumEndBlock && skeleton_x[s] > player_x)
+                inPower = true;
+        }
+        else if (playerDirection == 'L')
+        {
+            if (abs(player_y - skeleton_y[s]) <= vaccumRange)
+                inRange = true;
+            
+            if (skeletonblockX >= vaccumStartBlock && skeletonblockX <= vaccumEndBlock && skeleton_x[s] < player_x)
+                inPower = true;
+        }
+        else if (playerDirection == 'U')
+        {
+            if (abs(player_x - skeleton_x[s]) <= vaccumRange)
+                inRange = true;
+            
+            if (skeletonblockY >= vaccumStartBlock && skeletonblockY <= vaccumEndBlock && skeleton_y[s] < player_y)
+                inPower = true;
+        }
+        else if (playerDirection == 'D')
+        {
+            if (abs(player_x - skeleton_x[s]) <= vaccumRange)
+                inRange = true;
+            
+            if (skeletonblockY >= vaccumStartBlock && skeletonblockY <= vaccumEndBlock && skeleton_y[s] > player_y)
+                inPower = true;
+        }
+        
+        // Only apply vacuum if skeleton is both in range AND in power
+        if (inRange && inPower)
+        {
+            // PULL SKELETON TOWARDS THE PLAYER
+            if (playerDirection == 'R')
             {
-                if (playerDirection == 'R')
+                skeleton_x[s] += vaccumForce;
+            }
+            else if (playerDirection == 'L')
+            {
+                skeleton_x[s] -= vaccumForce;
+            }
+            else if (playerDirection == 'U')
+            {
+                skeleton_y[s] -= vaccumForce;
+            }
+            else if (playerDirection == 'D')
+            {
+                skeleton_y[s] += vaccumForce*1.8;
+            }
+            
+            // Check if skeleton has reached the player to capture it
+            if (playerDirection == 'R')
+            {
+                if (skeleton_x[s] <= player_x + PlayerWidth)
                 {
-                    if (skeleton_x[s] > player_x)
-                        skeleton_x[s] += vaccumForce;
+                    skeleton_x[s] = 0;
+                    skeleton_y[s] = 0;
+					bag++;
                 }
-                else if (playerDirection == 'L')
+            }
+            else if (playerDirection == 'L')
+            {
+                if (skeleton_x[s] >= player_x)
                 {
-                    if (skeleton_x[s] < player_x)
-                        skeleton_x[s] -= vaccumForce;
+                    skeleton_x[s] = 0;
+                    skeleton_y[s] = 0;
+					bag++;
                 }
-                
-				// Checking if skeleton got caught
-                if (playerDirection == 'R')
+            }
+            else if (playerDirection == 'U')
+            {
+                if (skeleton_y[s] >= player_y - 10)
                 {
-                    if (skeleton_x[s] <= player_x + PlayerWidth)
-                    {
-                        skeleton_x[s] = 0;
-                        skeleton_y[s] = 0;
-                    }
+                    skeleton_x[s] = 0;
+                    skeleton_y[s] = 0;
+					bag++;
                 }
-                else if (playerDirection == 'L')
+            }
+            else if (playerDirection == 'D')
+            {
+                if (skeleton_y[s] <= player_y + PlayerHeight)
                 {
-                    if (skeleton_x[s] >= player_x)
-                    {
-                        skeleton_x[s] = 0;
-                        skeleton_y[s] = 0;
-                    }
+                    skeleton_x[s] = 0;
+                    skeleton_y[s] = 0;
+					bag++;
                 }
             }
         }
@@ -526,7 +617,7 @@ int main()
 	window.setVerticalSyncEnabled(true);
 	window.setFramerateLimit(60);
 
-	//level specifics
+																	//level specifics
 	const int cell_size = 64;
 	const int height = 14;
 	const int width = 18;
@@ -534,7 +625,7 @@ int main()
 
 	char playerDirection = '\0';
 
-	//level and background textures and sprites
+														//level and background textures and sprites
 	Texture bgTex;
 	Sprite bgSprite;
 	Texture blockTexture;
@@ -547,7 +638,7 @@ int main()
 	blockTexture.loadFromFile("Data/block1.png");
 	blockSprite.setTexture(blockTexture);
 
-	//Music initialisation
+																//Music initialisation
 	Music lvlMusic;
 
 	lvlMusic.openFromFile("Data/mus.ogg");
@@ -613,12 +704,13 @@ int main()
 	char top_mid_up = '\0';
 	char top_left_up = '\0';
 
-			//VACCUM VARIABLES
+																		//VACCUM VARIABLES
 	float vaccumForce = -8.0f;
 	float vaccumRange = 64.0f;
 	float vaccumPower = 3.0f;
+	int bag = 0;
 
-			//GHOST VARIABLES and SPRITE
+																	//GHOST VARIABLES and SPRITE
 	const int ghost_count = 8;
 
 	float ghostX[ghost_count];
@@ -638,7 +730,7 @@ int main()
 	ghostSprite.move(32,0);
 	ghostSprite.setTextureRect(IntRect(0, 0, 64, 64));
 
-	//SKELETON VARIABLES
+																		//SKELETON VARIABLES
 	const int skeleton_count = 4;
 
 	// positions
@@ -664,7 +756,7 @@ int main()
 	skeletonSprite.setTextureRect(IntRect(0, 0, 48, 48));
 
 
-				//PLAYER SPRITE
+																		//PLAYER SPRITE
 	PlayerTexture.loadFromFile("Data/player.png");
 	PlayerSprite.setTexture(PlayerTexture);
 	PlayerSprite.setScale(3,3);
@@ -773,10 +865,12 @@ int main()
 
 		if (Keyboard::isKeyPressed(Keyboard::Space))
 		{
-			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, 
-				vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, 
-				player_x, player_y, PlayerWidth, cell_size, 
-				ghost_count, skeleton_count);
+			if (bag<3)
+			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, player_x, player_y, PlayerWidth, PlayerHeight, cell_size, ghost_count, skeleton_count, bag);
+		}
+		if (Keyboard::isKeyPressed(Keyboard::E))
+		{
+			bag = 0;
 		}
 
 		//calling function to move ghosts
