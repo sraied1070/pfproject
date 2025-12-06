@@ -734,6 +734,14 @@ int main()
 	float vaccumRange = 64.0f;
 	float vaccumPower = 3.0f;
 	int bag = 0;
+	Texture ballTex;
+	ballTex.loadFromFile("Data/ball.png");   // you can reuse ghost or skeleton if no ball image exists yet
+	Sprite ballSprite;
+	ballSprite.setTexture(ballTex);
+	ballSprite.setScale(0.4f,0.4f);
+	char shootDir = 'R'; // default right
+
+
 
 																	//GHOST VARIABLES and SPRITE
 	const int ghost_count = 8;
@@ -787,6 +795,13 @@ int main()
 	PlayerSprite.setScale(3,3);
 	PlayerSprite.setPosition(player_x, player_y);
 
+	// BALL PROJECTILE VARIABLES
+	bool ballActive = false;
+	float ballX = 0, ballY = 0;
+	float ballVelX = 0, ballVelY = 0;
+	float ballSpeed = 10.0f;   // horizontal speed
+	float ballGravity = 0.8f;  // downward curved movement
+	float ballBounceFactor = -0.8f; // bounce off walls/roof
 
 	//creating level array
 	lvl = new char* [height];
@@ -818,6 +833,11 @@ int main()
 			}
 
 		}
+		// UPDATE SHOOTING DIRECTION BASED ON WASD
+		if (Keyboard::isKeyPressed(Keyboard::W)) shootDir = 'U';
+		if (Keyboard::isKeyPressed(Keyboard::A)) shootDir = 'L';
+		if (Keyboard::isKeyPressed(Keyboard::S)) shootDir = 'D';
+		if (Keyboard::isKeyPressed(Keyboard::D)) shootDir = 'R';
 
 		//presing escape to close
 		if (Keyboard::isKeyPressed(Keyboard::Escape))
@@ -893,15 +913,164 @@ int main()
 			if (bag<3)
 			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, player_x, player_y, PlayerWidth, PlayerHeight, cell_size, ghost_count, skeleton_count, bag);
 		}
+		// LAUNCH ALL ENEMIES (E)
 		if (Keyboard::isKeyPressed(Keyboard::E))
 		{
-			bag = 0;
+			if (!ballActive && bag > 0)
+			{
+				ballActive = true;
+
+				ballX = player_x + PlayerWidth / 2;
+				ballY = player_y + PlayerHeight / 2;
+
+				// BIG BALL: same direction as WASD aim, but stronger
+				switch (shootDir)
+				{
+					case 'R':
+						ballVelX = ballSpeed * 1.5f;
+						ballVelY = -8;
+						break;
+
+					case 'L':
+						ballVelX = -ballSpeed * 1.5f;
+						ballVelY = -8;
+						break;
+
+					case 'U':
+						ballVelX = 0;
+						ballVelY = -18;  // extra strong upward shot
+						break;
+
+					case 'D':
+						ballVelX = 0;
+						ballVelY = 18;   // extra strong downward shot
+						break;
+				}
+
+        // remove ALL captured enemies
+        bag = 0;
+    }
+}
+
+		// LAUNCH ONE ENEMY (LShift)
+		if (Keyboard::isKeyPressed(Keyboard::LShift))
+		{
+			if (!ballActive && bag > 0)
+			{
+				ballActive = true;
+
+				ballX = player_x + PlayerWidth / 2;
+				ballY = player_y + PlayerHeight / 2;
+
+				// LAUNCH USING WASD DIRECTION
+				switch (shootDir)
+				{
+					case 'R':
+						ballVelX = ballSpeed;
+						ballVelY = -6;    // small arc upward
+						break;
+
+					case 'L':
+						ballVelX = -ballSpeed;
+						ballVelY = -6;
+						break;
+
+					case 'U':
+						ballVelX = 0;
+						ballVelY = -14;   // fast upward shot
+						break;
+
+					case 'D':
+						ballVelX = 0;
+						ballVelY = 14;    // fast downward shot
+						break;
+				}
+
+				bag--;  // Use one enemy
+			}
 		}
 
-		//calling function to move ghosts
+		//calling function to move ghosts,skeletons
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
 		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y, skeletonDir, skeletonSpeed, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity, skeleton_count, cell_size, skeletonFace, jumpStrength);
 		applySkeletonGravity(lvl, skeleton_x, skeleton_y, skeletonY_velocity, skeletonOnGround, skeleton_count, gravity, terminal_Velocity, cell_size);
+		
+		// --- BALL MOVEMENT ---
+		if (ballActive)
+		{
+			// Move
+			ballX += ballVelX;
+			ballY += ballVelY;
+
+			// Add gravity ONLY for left/right shots
+			if (shootDir == 'L' || shootDir == 'R')
+				ballVelY += ballGravity;
+
+			// --- BOUNCE LOGIC ---
+			
+			// LEFT WALL
+			if (ballX <= 0)
+			{
+				ballX = 0;
+				ballVelX *= ballBounceFactor;
+			}
+
+			// RIGHT WALL
+			if (ballX >= screen_x - 64)
+			{
+				ballX = screen_x - 64;
+				ballVelX *= ballBounceFactor;
+			}
+
+			// CEILING
+			if (ballY <= 0)
+			{
+				ballY = 0;
+				ballVelY *= ballBounceFactor;
+			}
+
+			// FLOOR (destroy ball)
+			if (ballY >= screen_y - 64)
+			{
+				ballActive = false;
+			}
+		}
+
+		// --- BALL COLLISION WITH ENEMIES ---
+		if (ballActive)
+		{
+			// Ghosts
+			for (int g = 0; g < ghost_count; g++)
+			{
+				if (ghostX[g] == 0 && ghostY[g] == 0) continue;
+
+				if (ballX + 32 > ghostX[g] &&
+					ballX < ghostX[g] + 64 &&
+					ballY + 32 > ghostY[g] &&
+					ballY < ghostY[g] + 64)
+				{
+					ghostX[g] = 0;
+					ghostY[g] = 0;
+				}
+			}
+
+			// Skeletons
+			for (int s = 0; s < skeleton_count; s++)
+			{
+				if (skeleton_x[s] == 0 && skeleton_y[s] == 0) continue;
+
+				if (ballX + 32 > skeleton_x[s] &&
+					ballX < skeleton_x[s] + 48 &&
+					ballY + 32 > skeleton_y[s] &&
+					ballY < skeleton_y[s] + 96)
+				{
+					skeleton_x[s] = 0;
+					skeleton_y[s] = 0;
+				}
+			}
+		}
+
+
 		// Skip death check if invulnerable
 		if (!playerInvulnerable)
 		{
@@ -995,6 +1164,12 @@ int main()
 			}
     		window.draw(skeletonSprite);
 		}
+		if (ballActive)
+		{
+			ballSprite.setPosition(ballX, ballY);
+			window.draw(ballSprite);
+		}
+
 		game = 0;
 		for (int i=0; i<ghost_count; i++)
 		{
