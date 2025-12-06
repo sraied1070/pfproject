@@ -245,6 +245,22 @@ void moveSkeletons(char** lvl, int height, int width,float skeleton_x[], float s
     }
 }
 
+void initLevel1enemies(){
+	//initSkeletons ();
+}
+
+void platformClear(char** lvl, const int height, const int width){
+	for (int i = 0; i < height; i++)
+	{
+		for (int j=0;  j< width; j++)
+		{
+			if (i == 0 || j == 0 || j == width - 1 || i == height - 1);
+			else 
+				lvl[i][j] = ' ';
+		}	
+	}
+}
+
 				//PLATFORM FORMATION
 void platform(char**lvl, const int height, const int width){
 	for (int i = 0; i < height; i++)
@@ -256,6 +272,9 @@ void platform(char**lvl, const int height, const int width){
 
 			if ( (i==6 || i==10) && (j<=5 || j>=width-6) )
 				lvl[i][j] = '#';
+
+			lvl[8][8] = '#';
+			lvl[8][9] = '#';
 			
 		}	
 	}
@@ -299,7 +318,7 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
         
         // Checking if the player's bottom edge at the original position was above the block's top edge where player has moved.
         // It verifies that if player is landing on block and not hitting it from any side. Without this check player can get stuck inside the block if platform is above 3 blocks.
-        if (original_y + Pheight <= block_top_y)
+        if (original_y + Pheight <= block_top_y + 0.1f)
         {
             isJumping = false;
         }
@@ -344,36 +363,34 @@ void applySkeletonGravity(char** lvl,float skeleton_x[], float skeleton_y[],floa
     }
 }
 
-void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], 
-            float vaccumForce, int vaccumPower, float vaccumRange, char playerDirection, float player_x, float player_y, 
-            int PlayerWidth, int PlayerHeight, const int cell_size, int ghost_count, int skeleton_count, int& bag)
+void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], float vaccumForce, int vaccumPower, float vaccumRange, char playerDirection, float player_x, float player_y, int PlayerWidth, int PlayerHeight, const int cell_size, int ghost_count, int skeleton_count, int& bag)
 {
     // Calculate player's block position
     int playerBlockX = (int)(player_x / cell_size);
     int playerBlockY = (int)(player_y / cell_size);
     
     // Define vacuum range based on player direction
-    int vaccumStartBlock, vaccumEndBlock;
+    int vaccumStarting, vaccumEnding;
     
     if (playerDirection == 'R')
     {
-        vaccumStartBlock = playerBlockX;
-        vaccumEndBlock = playerBlockX + vaccumPower;
+        vaccumStarting = playerBlockX;
+        vaccumEnding = playerBlockX + vaccumPower;
     }
     else if (playerDirection == 'L')
     {
-        vaccumStartBlock = playerBlockX - vaccumPower;
-        vaccumEndBlock = playerBlockX;
+        vaccumStarting = playerBlockX - vaccumPower;
+        vaccumEnding = playerBlockX;
     }
     else if (playerDirection == 'U')
     {
-        vaccumStartBlock = playerBlockY - vaccumPower;
-        vaccumEndBlock = playerBlockY;
+        vaccumStarting = playerBlockY - vaccumPower;
+        vaccumEnding = playerBlockY;
     }
     else if (playerDirection == 'D')
     {
-        vaccumStartBlock = playerBlockY;
-        vaccumEndBlock = playerBlockY + vaccumPower;
+        vaccumStarting = playerBlockY;
+        vaccumEnding = playerBlockY + vaccumPower;
     }
     else
     {
@@ -391,53 +408,49 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         int ghostblockX = (int)(ghostX[g] / cell_size);
         int ghostblockY = (int)(ghostY[g] / cell_size);
         
-        bool inRange = false;
-        bool inPower = false;
+        bool inRadius = false;
+        bool inlength = false;
         
         // Check based on direction
         if (playerDirection == 'R')
 		{
 			// Check if ghost is within vaccumRange vertically (without abs)
-			if ((player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) || 
-				(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
-				inRange = true;
+			if (( player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) ||(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
+				inRadius = true;
 			
-			if (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock && ghostX[g] > player_x)
-				inPower = true;
+			if (ghostblockX >= vaccumStarting && ghostblockX <= vaccumEnding && ghostX[g] > player_x)
+				inlength = true;
 		}
         else if (playerDirection == 'L')
 		{
 			// Check if ghost is within vaccumRange vertically (without abs)
-			if ((player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) || 
-				(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
-				inRange = true;
+			if (( player_y - ghostY[g] <= vaccumRange && player_y - ghostY[g] >= 0) ||(ghostY[g] - player_y <= vaccumRange && ghostY[g] - player_y >= 0))
+				inRadius = true;
 			
-			if (ghostblockX >= vaccumStartBlock && ghostblockX <= vaccumEndBlock && ghostX[g] < player_x)
-				inPower = true;
+			if (ghostblockX >= vaccumStarting && ghostblockX <= vaccumEnding && ghostX[g] < player_x)
+				inlength = true;
 		}
         else if (playerDirection == 'U')
 		{
 			// Check if ghost is within vaccumRange horizontally (without abs)
-			if ((player_x - ghostX[g] <= vaccumRange && player_x - ghostX[g] >= 0) || 
-				(ghostX[g] - player_x <= vaccumRange && ghostX[g] - player_x >= 0))
-				inRange = true;
+			if ((player_x - ghostX[g] <= vaccumRange && player_x - ghostX[g] >= 0) || (ghostX[g] - player_x <= vaccumRange && ghostX[g] - player_x >= 0))
+				inRadius = true;
 			
-			if (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock && ghostY[g] < player_y)
-				inPower = true;
+			if (ghostblockY >= vaccumStarting && ghostblockY <= vaccumEnding && ghostY[g] < player_y)
+				inlength = true;
 		}
         else if (playerDirection == 'D')
 		{
 			// Check if ghost is within vaccumRange horizontally (without abs)
-			if ((player_x - ghostX[g] <= vaccumRange && player_x - ghostX[g] >= 0) || 
-				(ghostX[g] - player_x <= vaccumRange && ghostX[g] - player_x >= 0))
-				inRange = true;
+			if ((player_x-ghostX[g] <= vaccumRange && player_x-ghostX[g] >= 0) || (ghostX[g]-player_x <= vaccumRange && ghostX[g]-player_x >= 0))
+				inRadius = true;
 			
-			if (ghostblockY >= vaccumStartBlock && ghostblockY <= vaccumEndBlock && ghostY[g] > player_y)
-				inPower = true;
+			if (ghostblockY >= vaccumStarting && ghostblockY <= vaccumEnding && ghostY[g] > player_y)
+				inlength = true;
 		}
         
         // Only apply vacuum if ghost is both in range AND in power
-        if (inRange && inPower)
+        if (inRadius && inlength)
         {
             // PULL GHOST TOWARDS THE PLAYER
             if (playerDirection == 'R')
@@ -508,45 +521,45 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         int skeletonblockX = (int)(skeleton_x[s] / cell_size);
         int skeletonblockY = (int)(skeleton_y[s] / cell_size);
         
-        bool inRange = false;
-        bool inPower = false;
+        bool inRadius = false;
+        bool inlength = false;
         
         // Check based on direction
         if (playerDirection == 'R')
         {
-            if (abs(player_y - skeleton_y[s]) <= vaccumRange)
-                inRange = true;
+            if ((player_y-skeleton_y[s] <= vaccumRange && player_y - skeleton_y[s] >= 0) ||(skeleton_y[s] -player_y <= vaccumRange && skeleton_y[s] - player_y >= 0))
+                inRadius = true;
             
-            if (skeletonblockX >= vaccumStartBlock && skeletonblockX <= vaccumEndBlock && skeleton_x[s] > player_x)
-                inPower = true;
+            if (skeletonblockX >= vaccumStarting && skeletonblockX <= vaccumEnding && skeleton_x[s] > player_x)
+                inlength = true;
         }
         else if (playerDirection == 'L')
         {
-            if (abs(player_y - skeleton_y[s]) <= vaccumRange)
-                inRange = true;
+            if ((player_y-skeleton_y[s] <= vaccumRange && player_y - skeleton_y[s] >= 0) ||(skeleton_y[s] -player_y <= vaccumRange && skeleton_y[s] - player_y >= 0))
+                inRadius = true;
             
-            if (skeletonblockX >= vaccumStartBlock && skeletonblockX <= vaccumEndBlock && skeleton_x[s] < player_x)
-                inPower = true;
+            if (skeletonblockX >= vaccumStarting && skeletonblockX <= vaccumEnding && skeleton_x[s] < player_x)
+                inlength = true;
         }
         else if (playerDirection == 'U')
         {
-            if (abs(player_x - skeleton_x[s]) <= vaccumRange)
-                inRange = true;
+            if ((player_x - skeleton_x[s] <= vaccumRange && player_x - skeleton_x[s] >= 0) || (skeleton_x[s] - player_x <= vaccumRange && skeleton_x[s] - player_x >= 0))
+                inRadius = true;
             
-            if (skeletonblockY >= vaccumStartBlock && skeletonblockY <= vaccumEndBlock && skeleton_y[s] < player_y)
-                inPower = true;
+            if (skeletonblockY >= vaccumStarting && skeletonblockY <= vaccumEnding && skeleton_y[s] < player_y)
+                inlength = true;
         }
         else if (playerDirection == 'D')
         {
-            if (abs(player_x - skeleton_x[s]) <= vaccumRange)
-                inRange = true;
+            if ((player_x - skeleton_x[s] <= vaccumRange && player_x - skeleton_x[s] >= 0) || (skeleton_x[s] - player_x <= vaccumRange && skeleton_x[s] - player_x >= 0))
+                inRadius = true;
             
-            if (skeletonblockY >= vaccumStartBlock && skeletonblockY <= vaccumEndBlock && skeleton_y[s] > player_y)
-                inPower = true;
+            if (skeletonblockY >= vaccumStarting && skeletonblockY <= vaccumEnding && skeleton_y[s] > player_y)
+                inlength = true;
         }
         
         // Only apply vacuum if skeleton is both in range AND in power
-        if (inRange && inPower)
+        if (inRadius && inlength)
         {
             // PULL SKELETON TOWARDS THE PLAYER
             if (playerDirection == 'R')
@@ -606,11 +619,11 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         }
     }
 }
-void killPlayer(float &player_x, float &player_y,
-                int &playerLives, bool &playerInvulnerable,
-                Clock &invClock, float respawnX, float respawnY)
+
+void killPlayer(float &player_x, float &player_y,int &playerLives, bool &playerInvulnerable,Clock &invClock, float respawnX, float respawnY, int& bag)
 {
     playerLives--;
+	bag = 0;
 
     // Respawn player
     player_x = respawnX;
@@ -621,11 +634,46 @@ void killPlayer(float &player_x, float &player_y,
     invClock.restart();
 }
 
+void platform2(char** lvl, const int height, const int width){
+	for (int i = 0; i < height; i++)
+	{
+		for (int j=0;  j< width; j++)
+		{
+			if (( i==3 ) && ( j<=2 || j>width-5 ) )
+				lvl[i][j] = '#';
 
+				int startRow = 10;
+    			int startCol = 3;
+    
+    			for(int i = 0; i < 10; i++)
+				{
+					lvl[startRow - i][startCol + i] = '#';
+				}
+
+			//if ( (i==6 || i==10) && (j<=5 || j>=width-6) )
+			//	lvl[i][j] = '#';			
+		}	
+	}
+}
+
+bool levelCompletionCheck (float ghostX[], float ghostY[], float skeleton_x[], float skeleton_y[], int ghost_count, int skeleton_count){
+		for (int i=0; i<ghost_count; i++)
+		{
+			if(ghostX[i]==0 && ghostY[i]==0);
+			else return false;
+			if(i<skeleton_count)
+			{
+				if(skeleton_x[i]==0 && skeleton_y[i]==0);
+				else return false;
+			}
+		}
+		return true;
+}
 
 int main()
 {
-	int game = 0;
+	int levelNum = 1;
+	bool levelCompleted = false;
 
 	srand(time(NULL));
 	RenderWindow window(VideoMode(screen_x, screen_y), "Tumble-POP", Style::Resize);
@@ -734,12 +782,13 @@ int main()
 	float vaccumRange = 64.0f;
 	float vaccumPower = 3.0f;
 	int bag = 0;
+
 	Texture ballTex;
-	ballTex.loadFromFile("Data/ball.png");   // you can reuse ghost or skeleton if no ball image exists yet
+	ballTex.loadFromFile("Data/ball.png");
 	Sprite ballSprite;
 	ballSprite.setTexture(ballTex);
 	ballSprite.setScale(0.4f,0.4f);
-	char shootDir = 'R'; // default right
+	char shootDir = 'R';
 
 
 
@@ -752,6 +801,8 @@ int main()
 	float ghostSpeed[ghost_count];
 	int ghostTimer[ghost_count];
 	char ghostFace[ghost_count];
+
+	if(levelNum == 1)
 	initGhosts(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
 
 
@@ -777,7 +828,7 @@ int main()
 	bool  skeletonOnGround[skeleton_count];
 	float skeletonY_velocity[skeleton_count];
 
-
+	if(levelNum == 1)
 	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown,skeletonOnGround,skeletonY_velocity);
 	
 	// sprites + texture
@@ -811,16 +862,12 @@ int main()
 	}
 
 	boundaries(lvl, height, width);
-	platform(lvl, height, width);
 
-	lvl[8][8] = '#';
-	lvl[8][9] = '#';
 
 	Event ev;
-	//main loop
+																		//MAIN LOOP
 	while (window.isOpen())
 	{
-
 		while (window.pollEvent(ev))
 		{
 			if (ev.type == Event::Closed) 
@@ -833,6 +880,20 @@ int main()
 			}
 
 		}
+		if (levelCompleted)
+		{
+			sleep(seconds(2));
+			levelCompleted = false;
+			levelNum += 1;
+			skeleton_x[2] = 20;
+			
+				player_x = 64;
+				player_y = 64;
+				platformClear(lvl, height, width);
+				platform2(lvl, height, width);
+		}
+		if (levelNum == 1)
+			platform(lvl, height, width);
 		// UPDATE SHOOTING DIRECTION BASED ON WASD
 		if (Keyboard::isKeyPressed(Keyboard::W)) shootDir = 'U';
 		if (Keyboard::isKeyPressed(Keyboard::A)) shootDir = 'L';
@@ -845,7 +906,7 @@ int main()
 			window.close();
 		}
 
-		if ( (Keyboard::isKeyPressed(Keyboard::Left)) || (Keyboard::isKeyPressed(Keyboard::A)) )
+		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
 			playerDirection = 'L';
 													//COLLISION CHECK
@@ -855,31 +916,39 @@ int main()
 			char left_top = lvl[(int)(player_y) / cell_size][(int)(player_x - speed) / cell_size];
 
 			// Check for movement. If next block is # then don't move the player
-			if (left_mid != '#' && left_bottom != '#' && left_top != '#') {
-				player_x -= speed;
-			}
-			// Now to exactly stop player at 13th block and another check if player is moving left while jumping to start projectile motion.
-			else {
-				if (!(Keyboard::isKeyPressed(Keyboard::Up)))
-					player_x = ( ( (int)(player_x - speed) / cell_size) + 1) * cell_size;
-				else 
-				{
-					if (player_x > cell_size)
-						player_x -= speed;
+			if (onGround)
+			{
+				if (left_bottom != '#') {
+					player_x -= speed;
+				}
+
+				// Now to exactly stop player at 13th block and another check if player is moving left while jumping to start projectile motion.
+				else {
+					if (!(Keyboard::isKeyPressed(Keyboard::Up)))
+						player_x = ( ( (int)(player_x - speed) / cell_size) + 1) * cell_size;
+					else 
+					{
+						if (player_x > cell_size)
+							player_x -= speed;
+					}
 				}
 			}
+			else
+			if (player_x > cell_size)
+			player_x -= speed;
 		}
 
-		if ( (Keyboard::isKeyPressed(Keyboard::Right)) || (Keyboard::isKeyPressed(Keyboard::D)) )
+		if (Keyboard::isKeyPressed(Keyboard::Right))
 		{			
 			playerDirection = 'R';
 			right_bottom = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
 			right_mid = lvl[(int)(player_y + PlayerHeight/2) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
 			right_top = lvl[(int)(player_y) / cell_size][(int)(player_x + PlayerWidth + speed) / cell_size];
 
-			if(right_mid != '#' && right_bottom != '#' && right_top != '#')
+			if(right_bottom != '#')
 				player_x += speed;
 			else
+			{
 				if (!(Keyboard::isKeyPressed(Keyboard::Up)))
 					player_x = (player_x / (int)cell_size)*cell_size;
 				else
@@ -887,12 +956,14 @@ int main()
 					if (player_x + PlayerWidth < screen_x - cell_size - 10)
 						player_x += speed;
 				}
+			}
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
 			jump(onGround, velocityY, jumpStrength);
 		}
+
 		if (Keyboard::isKeyPressed(Keyboard::Down))
 		{
 			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
@@ -903,9 +974,19 @@ int main()
 			playerDirection = 'U';
 		}
 
+		if (Keyboard::isKeyPressed(Keyboard::A))
+		{
+			playerDirection = 'L';
+		}
+
 		if (Keyboard::isKeyPressed(Keyboard::S))
 		{
 			playerDirection = 'D';
+		}
+
+		if (Keyboard::isKeyPressed(Keyboard::D))
+		{
+			playerDirection = 'R';
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::Space))
@@ -913,44 +994,43 @@ int main()
 			if (bag<3)
 			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, player_x, player_y, PlayerWidth, PlayerHeight, cell_size, ghost_count, skeleton_count, bag);
 		}
-		// LAUNCH ALL ENEMIES (E)
+		
+																// LAUNCH ALL ENEMIES (E)
 		if (Keyboard::isKeyPressed(Keyboard::E))
 		{
 			if (!ballActive && bag > 0)
 			{
 				ballActive = true;
 
-				ballX = player_x + PlayerWidth / 2;
-				ballY = player_y + PlayerHeight / 2;
+				ballX = player_x;
+				ballY = player_y;
 
-				// BIG BALL: same direction as WASD aim, but stronger
+					// BIG BALL: same direction as WASD aim, but stronger
 				switch (shootDir)
 				{
 					case 'R':
 						ballVelX = ballSpeed * 1.5f;
-						ballVelY = -8;
+						ballVelY = -6;
 						break;
 
 					case 'L':
 						ballVelX = -ballSpeed * 1.5f;
-						ballVelY = -8;
+						ballVelY = -6;
 						break;
 
 					case 'U':
 						ballVelX = 0;
-						ballVelY = -18;  // extra strong upward shot
+						ballVelY = -14;
 						break;
 
 					case 'D':
 						ballVelX = 0;
-						ballVelY = 18;   // extra strong downward shot
+						ballVelY = 14;
 						break;
 				}
-
-        // remove ALL captured enemies
-        bag = 0;
-    }
-}
+				bag = 0;// remove the captured enemies
+    		}
+		}
 
 		// LAUNCH ONE ENEMY (LShift)
 		if (Keyboard::isKeyPressed(Keyboard::LShift))
@@ -959,8 +1039,8 @@ int main()
 			{
 				ballActive = true;
 
-				ballX = player_x + PlayerWidth / 2;
-				ballY = player_y + PlayerHeight / 2;
+				ballX = player_x;
+				ballY = player_y;
 
 				// LAUNCH USING WASD DIRECTION
 				switch (shootDir)
@@ -977,25 +1057,27 @@ int main()
 
 					case 'U':
 						ballVelX = 0;
-						ballVelY = -14;   // fast upward shot
+						ballVelY = -14;
 						break;
 
 					case 'D':
 						ballVelX = 0;
-						ballVelY = 14;    // fast downward shot
+						ballVelY = 14;
 						break;
 				}
-
-				bag--;  // Use one enemy
+				bag--;  // remove one enemy
 			}
 		}
 
 		//calling function to move ghosts,skeletons
+
+		if(levelNum == 1){
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
 		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y, skeletonDir, skeletonSpeed, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity, skeleton_count, cell_size, skeletonFace, jumpStrength);
 		applySkeletonGravity(lvl, skeleton_x, skeleton_y, skeletonY_velocity, skeletonOnGround, skeleton_count, gravity, terminal_Velocity, cell_size);
+		}
 		
-		// --- BALL MOVEMENT ---
+											//BALL MOVEMENT
 		if (ballActive)
 		{
 			// Move
@@ -1036,7 +1118,7 @@ int main()
 			}
 		}
 
-		// --- BALL COLLISION WITH ENEMIES ---
+										//  BALL COLLISION WITH ENEMIES 
 		if (ballActive)
 		{
 			// Ghosts
@@ -1071,7 +1153,7 @@ int main()
 		}
 
 
-		// Skip death check if invulnerable
+										// Skip death check if invulnerable
 		if (!playerInvulnerable)
 		{
 			// Check ghost collision
@@ -1086,7 +1168,7 @@ int main()
 				{
 					killPlayer(player_x, player_y, playerLives,
 							playerInvulnerable, invClock,
-							respawnX, respawnY);
+							respawnX, respawnY, bag);
 				}
 			}
 
@@ -1095,17 +1177,13 @@ int main()
 			{
 				if (skeleton_x[s] == 0 && skeleton_y[s] == 0) continue;
 
-				if (player_x + PlayerWidth > skeleton_x[s] &&
-					player_x < skeleton_x[s] + 48 &&
-					player_y + PlayerHeight > skeleton_y[s] &&
-					player_y < skeleton_y[s] + 96)
+				if ( (player_x+PlayerWidth > skeleton_x[s] && player_x < skeleton_x[s]+48) && (player_y+ PlayerHeight > skeleton_y[s] &&player_y < skeleton_y[s] +96))
 				{
-					killPlayer(player_x, player_y, playerLives,
-							playerInvulnerable, invClock,
-							respawnX, respawnY);
+					killPlayer(player_x, player_y, playerLives, playerInvulnerable, invClock, respawnX, respawnY, bag);
 				}
 			}
 		}
+
 		if (playerInvulnerable)
 		{
 			if (invClock.getElapsedTime().asSeconds() >= 3.0f)
@@ -1128,7 +1206,8 @@ int main()
 
 
 		window.draw(PlayerSprite);
-		//rendering all ghosts
+
+				//rendering all ghosts
 		for(int g = 0; g < ghost_count; g++)
 		{
 			if (ghostX[g] == 0 && ghostY[g] == 0)
@@ -1170,22 +1249,8 @@ int main()
 			window.draw(ballSprite);
 		}
 
-		game = 0;
-		for (int i=0; i<ghost_count; i++)
-		{
-			if(ghostX[i]==0 && ghostY[i]==0);
-			else game++;
-			if(i<skeleton_count)
-			{
-				if(skeleton_x[i]==0 && skeleton_y[i]==0);
-				else game++;
-			}
-		}
-
-		if (game);
-		else
-		 window.close();
-
+		levelCompleted = levelCompletionCheck(ghostX, ghostY, skeleton_x, skeleton_y, ghost_count, skeleton_count);
+		 
 		window.display();
 		lvlMusic.stop();
 		if (playerLives <= 0)
