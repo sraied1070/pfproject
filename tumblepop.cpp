@@ -606,6 +606,21 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
         }
     }
 }
+void killPlayer(float &player_x, float &player_y,
+                int &playerLives, bool &playerInvulnerable,
+                Clock &invClock, float respawnX, float respawnY)
+{
+    playerLives--;
+
+    // Respawn player
+    player_x = respawnX;
+    player_y = respawnY;
+
+    // Start invulnerability
+    playerInvulnerable = true;
+    invClock.restart();
+}
+
 
 
 int main()
@@ -649,6 +664,16 @@ int main()
 	//player data
 	float player_x = 64;
 	float player_y = 64;
+	int playerLives = 3;
+	
+	bool playerInvulnerable = false;
+	float invTimer = 0.0f;
+
+	float respawnX = 64;           
+	float respawnY = 896-192;
+	
+	Clock invClock;
+
 
 	float speed = 5;
 
@@ -877,6 +902,47 @@ int main()
 		moveGhosts(lvl, height, width, ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostFace);
 		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y, skeletonDir, skeletonSpeed, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity, skeleton_count, cell_size, skeletonFace, jumpStrength);
 		applySkeletonGravity(lvl, skeleton_x, skeleton_y, skeletonY_velocity, skeletonOnGround, skeleton_count, gravity, terminal_Velocity, cell_size);
+		// Skip death check if invulnerable
+		if (!playerInvulnerable)
+		{
+			// Check ghost collision
+			for (int g = 0; g < ghost_count; g++)
+			{
+				if (ghostX[g] == 0 && ghostY[g] == 0) continue;
+
+				if (player_x + PlayerWidth > ghostX[g] &&
+					player_x < ghostX[g] + 64 &&
+					player_y + PlayerHeight > ghostY[g] &&
+					player_y < ghostY[g] + 64)
+				{
+					killPlayer(player_x, player_y, playerLives,
+							playerInvulnerable, invClock,
+							respawnX, respawnY);
+				}
+			}
+
+			// Check skeleton collision
+			for (int s = 0; s < skeleton_count; s++)
+			{
+				if (skeleton_x[s] == 0 && skeleton_y[s] == 0) continue;
+
+				if (player_x + PlayerWidth > skeleton_x[s] &&
+					player_x < skeleton_x[s] + 48 &&
+					player_y + PlayerHeight > skeleton_y[s] &&
+					player_y < skeleton_y[s] + 96)
+				{
+					killPlayer(player_x, player_y, playerLives,
+							playerInvulnerable, invClock,
+							respawnX, respawnY);
+				}
+			}
+		}
+		if (playerInvulnerable)
+		{
+			if (invClock.getElapsedTime().asSeconds() >= 3.0f)
+				playerInvulnerable = false;
+		}
+
 
 		window.clear();
 
@@ -890,6 +956,7 @@ int main()
 		}
 		else
 			PlayerSprite.setScale(3,3);
+
 
 		window.draw(PlayerSprite);
 		//rendering all ghosts
@@ -946,6 +1013,10 @@ int main()
 
 		window.display();
 		lvlMusic.stop();
+		if (playerLives <= 0)
+		{
+			window.close(); // or show game over screen later
+		}
 	}
 
 	//stopping music and deleting level array
