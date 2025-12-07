@@ -675,7 +675,7 @@ void applySkeletonGravity(char** lvl,float skeleton_x[], float skeleton_y[],floa
     }
 }
 
-void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], float vaccumForce, int vaccumPower, float vaccumRange, char playerDirection, float player_x, float player_y, int PlayerWidth, int PlayerHeight, const int cell_size, int ghost_count, int skeleton_count, int& bag)
+void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], float ghostY[], float vaccumForce, int vaccumPower, float vaccumRange, char playerDirection, float player_x, float player_y, int PlayerWidth, int PlayerHeight, const int cell_size, int ghost_count, int skeleton_count, int& bag,int &score, int &comboCount, bool &comboActive, float &comboTimer)
 {
     // Calculate player's block position
     int playerBlockX = (int)(player_x / cell_size);
@@ -790,6 +790,21 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     ghostX[g] = 0;
                     ghostY[g] = 0;
 					bag++;
+					// SCORE: Capture Ghost = 50
+					int points = 50;
+
+					// Apply combo multiplier
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					// Update combo state
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'L')
@@ -799,6 +814,21 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     ghostX[g] = 0;
                     ghostY[g] = 0;
 					bag++;
+					// SCORE: Capture Ghost = 50
+					int points = 50;
+
+					// Apply combo multiplier
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					// Update combo state
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'U')
@@ -808,6 +838,21 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     ghostX[g] = 0;
                     ghostY[g] = 0;
 					bag++;
+					// SCORE: Capture Ghost = 50
+					int points = 50;
+
+					// Apply combo multiplier
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					// Update combo state
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'D')
@@ -817,6 +862,21 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     ghostX[g] = 0;
                     ghostY[g] = 0;
 					bag++;
+					// SCORE: Capture Ghost = 50
+					int points = 50;
+
+					// Apply combo multiplier
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					// Update combo state
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
         }
@@ -899,6 +959,18 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     skeleton_x[s] = 0;
                     skeleton_y[s] = 0;
 					bag++;
+					int points = 75; // skeleton capture
+
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'L')
@@ -908,6 +980,18 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     skeleton_x[s] = 0;
                     skeleton_y[s] = 0;
 					bag++;
+					int points = 75; // skeleton capture
+
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'U')
@@ -917,6 +1001,18 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     skeleton_x[s] = 0;
                     skeleton_y[s] = 0;
 					bag++;
+					int points = 75; // skeleton capture
+
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
             else if (playerDirection == 'D')
@@ -926,13 +1022,25 @@ void vacuum(char** lvl, float skeleton_x[], float skeleton_y[], float ghostX[], 
                     skeleton_x[s] = 0;
                     skeleton_y[s] = 0;
 					bag++;
+					int points = 75; // skeleton capture
+
+					if (comboCount >= 3 && comboCount <= 4)
+						points = (int)(points * 1.5f);
+					else if (comboCount >= 5)
+						points = (int)(points * 2.0f);
+
+					score += points;
+
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
                 }
             }
         }
     }
 }
 
-void killPlayer(float &player_x, float &player_y,int &playerLives, bool &playerInvulnerable,Clock &invClock, float respawnX, float respawnY, int& bag)
+void killPlayer(float &player_x, float &player_y,int &playerLives, bool &playerInvulnerable,Clock &invClock, float respawnX, float respawnY, int& bag,int& score)
 {
     playerLives--;
 	bag = 0;
@@ -944,6 +1052,11 @@ void killPlayer(float &player_x, float &player_y,int &playerLives, bool &playerI
     // Start invulnerability
     playerInvulnerable = true;
     invClock.restart();
+	score-=50;
+	if(playerLives==0)
+	{
+		score-=200;
+	}
 }
 
 void platform2(char** lvl, const int height, const int width)
@@ -1220,6 +1333,26 @@ int main()
 	float ballGravity = 0.8f;  // downward curved movement
 	float ballBounceFactor = -0.8f; // bounce off walls/roof
 
+	// SCORE DISPLAY
+	Font scoreFont;
+	Text scoreText;
+	scoreFont.loadFromFile("Data/ARIAL.TTF");
+	scoreText.setFont(scoreFont);
+	scoreText.setCharacterSize(32);          // Size of text
+	scoreText.setFillColor(Color::White);    // Text color
+	scoreText.setPosition(64, 90);       // Top-left corner
+	scoreText.setString("Score: 0");
+
+	Clock levelClock;
+	float levelTime = 0.0f;
+
+	//SCORE VARIABLES
+	int score = 0;
+	int comboCount = 0;
+	float comboTimer = 0.0f;
+	bool comboActive = false;
+	int killedThisShot;
+
 	//creating level array
 	lvl = new char* [height];
 	for (int i = 0; i < height; i += 1)
@@ -1392,7 +1525,7 @@ int main()
 		if (Keyboard::isKeyPressed(Keyboard::Space))
 		{
 			if (bag<3)
-			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, player_x, player_y, PlayerWidth, PlayerHeight, cell_size, ghost_count, skeleton_count, bag);
+			vacuum(lvl, skeleton_x, skeleton_y, ghostX, ghostY, vaccumForce, (int)vaccumPower, vaccumRange, playerDirection, player_x, player_y, PlayerWidth, PlayerHeight, cell_size, ghost_count, skeleton_count, bag,score, comboCount, comboActive, comboTimer);
 		}
 		
 																// LAUNCH ALL ENEMIES (E)
@@ -1533,6 +1666,7 @@ int main()
 										//  BALL COLLISION WITH ENEMIES 
 		if (ballActive)
 		{
+			killedThisShot = 0;
 			// Ghosts
 			for (int g = 0; g < ghost_count; g++)
 			{
@@ -1545,6 +1679,11 @@ int main()
 				{
 					ghostX[g] = 0;
 					ghostY[g] = 0;
+					score += 50 * 2;   // defeat by projectile = 2X points
+					killedThisShot++;
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
 				}
 			}
 
@@ -1560,6 +1699,11 @@ int main()
 				{
 					skeleton_x[s] = 0;
 					skeleton_y[s] = 0;
+					score += 75 * 2;   // defeat by projectile = 2X points
+					killedThisShot++;
+					comboCount++;
+					comboActive = true;
+					comboTimer = 0.0f;
 				}
 			}
 		}
@@ -1580,7 +1724,7 @@ int main()
 				{
 					killPlayer(player_x, player_y, playerLives,
 							playerInvulnerable, invClock,
-							respawnX, respawnY, bag);
+							respawnX, respawnY, bag,score);
 				}
 			}
 
@@ -1591,7 +1735,7 @@ int main()
 
 				if ( (player_x+PlayerWidth > skeleton_x[s] && player_x < skeleton_x[s]+48) && (player_y+ PlayerHeight > skeleton_y[s] &&player_y < skeleton_y[s] +96))
 				{
-					killPlayer(player_x, player_y, playerLives, playerInvulnerable, invClock, respawnX, respawnY, bag);
+					killPlayer(player_x, player_y, playerLives, playerInvulnerable, invClock, respawnX, respawnY, bag,score);
 				}
 			}
 		}
@@ -1707,9 +1851,46 @@ int main()
 			ballSprite.setPosition(ballX, ballY);
 			window.draw(ballSprite);
 		}
+		scoreText.setString("Score: " + to_string(score));
+
+		window.draw(scoreText);
 
 		levelCompleted = levelCompletionCheck(ghostX, ghostY, skeleton_x, skeleton_y, ghost_count, skeleton_count);
-		 
+		if (levelCompleted)
+		{
+			levelTime = levelClock.getElapsedTime().asSeconds();
+
+			// LEVEL CLEAR BONUS
+			if (levelNum == 1)
+			{
+				score += 1000;     // basic clear
+
+				if (playerLives == 3)
+					score += 1500; // no damage bonus
+
+				if (levelTime < 60)      score += 500;
+				else if (levelTime < 45) score += 1000;
+				else if (levelTime < 30) score += 2000;
+			}
+			else if (levelNum == 2)
+			{
+				score += 2000;     // basic clear
+
+				if (playerLives == 3)
+					score += 2500; // no damage bonus
+
+				if (levelTime < 120)     score += 750;
+				else if (levelTime < 90) score += 1500;
+				else if (levelTime < 60) score += 3000;
+			}
+
+			cout << "LEVEL COMPLETE! Score = " << score << endl;
+
+			// prepare next level
+			levelNum++;
+			levelCompleted = false;
+			levelClock.restart();
+		}
 		window.display();
 		lvlMusic.stop();
 		if (playerLives <= 0)
