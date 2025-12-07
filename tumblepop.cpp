@@ -22,7 +22,7 @@ void display_level(RenderWindow& window, char**lvl, Texture& bgTex,Sprite& bgSpr
 		for (int j = 0; j < width; j += 1)
 		{
 
-			if (lvl[i][j] == '#')
+			if (lvl[i][j] == '#' || lvl[i][j] == '!')
 			{
 				blockSprite.setPosition(j * cell_size, i * cell_size);
 				window.draw(blockSprite);
@@ -245,8 +245,317 @@ void moveSkeletons(char** lvl, int height, int width,float skeleton_x[], float s
     }
 }
 
-void initLevel1enemies(){
-	//initSkeletons ();
+void initSpawnQueue(int spawnTypes[], int spawnRows[], int spawnCols[], int& totalSpawns)
+{
+    int index = 0;
+    
+    // Platform rows where enemies can spawn
+    int platforms[4] = {2, 5, 9, 12};
+    
+    // Add 4 ghosts (type 0)
+    for (int i = 0; i < 4; i++)
+    {
+        spawnTypes[index] = 0;  // Ghost
+        spawnRows[index] = platforms[rand() % 4];
+        spawnCols[index] = 3 + (rand() % 12);
+        index++;
+    }
+    
+    // Add 9 skeletons (type 1)
+    for (int i = 0; i < 9; i++)
+    {
+        spawnTypes[index] = 1;  // Skeleton
+        spawnRows[index] = platforms[rand() % 4];
+        spawnCols[index] = 3 + (rand() % 12);
+        index++;
+    }
+    
+    // Add 3 invisible men (type 2)
+    for (int i = 0; i < 3; i++)
+    {
+        spawnTypes[index] = 2;  // Invisible
+        spawnRows[index] = platforms[rand() % 4];
+        spawnCols[index] = 3 + (rand() % 12);
+        index++;
+    }
+    
+    // Add 4 chelnovs (type 3)
+    for (int i = 0; i < 4; i++)
+    {
+        spawnTypes[index] = 3;  // Chelnov
+        spawnRows[index] = platforms[rand() % 4];
+        spawnCols[index] = 3 + (rand() % 12);
+        index++;
+    }
+    
+    totalSpawns = index;  // Total = 20
+    
+    // Shuffle arrays for random order
+    for (int i = 0; i < totalSpawns; i++)
+    {
+        int r = rand() % totalSpawns;
+        
+        // Swap types
+        int tempType = spawnTypes[i];
+        spawnTypes[i] = spawnTypes[r];
+        spawnTypes[r] = tempType;
+        
+        // Swap rows
+        int tempRow = spawnRows[i];
+        spawnRows[i] = spawnRows[r];
+        spawnRows[r] = tempRow;
+        
+        // Swap cols
+        int tempCol = spawnCols[i];
+        spawnCols[i] = spawnCols[r];
+        spawnCols[r] = tempCol;
+    }
+}
+
+// Spawn next enemy from queue
+void spawnNextEnemy(int spawnTypes[], int spawnRows[], int spawnCols[], int currentIndex,
+                    float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], 
+                    char ghostFace[], int ghost_count,
+                    float skeleton_x[], float skeleton_y[], float skeletonDir[], 
+                    float skeletonSpeed[], int skeletonState[], int skeletonCooldown[], 
+                    bool skeletonOnGround[], float skeletonY_velocity[], 
+                    char skeletonFace[], int skeleton_count,
+                    float invisible_x[], float invisible_y[], float invisibleDir[], 
+                    float invisibleSpeed[], char invisibleFace[], int invisible_count,
+                    float chelnov_x[], float chelnov_y[], float chelnovDir[], 
+                    float chelnovSpeed[], char chelnovFace[], int chelnov_count,
+                    const int cell_size)
+{
+    int enemyType = spawnTypes[currentIndex];
+    float spawnX = spawnCols[currentIndex] * cell_size;
+    float spawnY = spawnRows[currentIndex] * cell_size - 32;
+    
+    // Type 0 = Ghost
+    if (enemyType == 0)
+    {
+        for (int g = 0; g < ghost_count; g++)
+        {
+            if (ghostX[g] == 0 && ghostY[g] == 0)
+            {
+                ghostX[g] = spawnX;
+                ghostY[g] = spawnY;
+                ghostDir[g] = 1;
+                ghostSpeed[g] = 1.2f;
+                ghostFace[g] = 'R';
+                break;
+            }
+        }
+    }
+    // Type 1 = Skeleton
+    else if (enemyType == 1)
+    {
+        for (int s = 0; s < skeleton_count; s++)
+        {
+            if (skeleton_x[s] == 0 && skeleton_y[s] == 0)
+            {
+                skeleton_x[s] = spawnX;
+                skeleton_y[s] = spawnY;
+                skeletonDir[s] = 1;
+                skeletonSpeed[s] = 1.0f;
+                skeletonState[s] = 0;
+                skeletonCooldown[s] = rand() % 60 + 30;
+                skeletonOnGround[s] = true;
+                skeletonY_velocity[s] = 0.0f;
+                skeletonFace[s] = 'R';
+                break;
+            }
+        }
+    }
+    // Type 2 = Invisible man
+    else if (enemyType == 2)
+    {
+        for (int i = 0; i < invisible_count; i++)
+        {
+            if (invisible_x[i] == 0 && invisible_y[i] == 0)
+            {
+                invisible_x[i] = spawnX;
+                invisible_y[i] = spawnY;
+                invisibleDir[i] = 1;
+                invisibleSpeed[i] = 1.5f;
+                invisibleFace[i] = 'R';
+                break;
+            }
+        }
+    }
+    // Type 3 = Chelnov
+    else if (enemyType == 3)
+    {
+        for (int c = 0; c < chelnov_count; c++)
+        {
+            if (chelnov_x[c] == 0 && chelnov_y[c] == 0)
+            {
+                chelnov_x[c] = spawnX;
+                chelnov_y[c] = spawnY;
+                chelnovDir[c] = 1;
+                chelnovSpeed[c] = 1.3f;
+                chelnovFace[c] = 'R';
+                break;
+            }
+        }
+    }
+}
+
+
+void moveInvisibleMen(char** lvl, int height, int width, float invisible_x[], 
+                     float invisible_y[], float invisibleDir[], float invisibleSpeed[], 
+                     int invisible_count, const int cell_size, char invisibleFace[])
+{
+    for(int i = 0; i < invisible_count; i++)
+    {
+        if(invisible_x[i] == 0 && invisible_y[i] == 0)
+            continue;
+        
+        // Add your movement logic here (copy from moveGhosts and modify)
+        int invBlockX = (int)(invisible_x[i] / cell_size);
+        int invBlockY = (int)(invisible_y[i] / cell_size);
+        
+        float predictedX = invisible_x[i] + (invisibleSpeed[i] * invisibleDir[i]);
+        int nextTileX = (int)(predictedX / cell_size) + 32;
+        
+        // Wall check
+        if (invisibleDir[i] == -1)
+        {
+            invisibleFace[i] = 'L';
+            if(lvl[invBlockY][nextTileX] == '#')
+            {
+                invisibleDir[i] *= -1;
+                invisibleFace[i] = 'R';
+                continue;
+            }
+        }
+        else
+        {
+            invisibleFace[i] = 'R';
+            if(lvl[invBlockY][nextTileX + 1] == '#')
+            {
+                invisibleDir[i] *= -1;
+                invisibleFace[i] = 'L';
+                continue;
+            }
+        }
+        
+        // Floor check
+        if(invisibleDir[i] == 1)
+        {
+            if(lvl[invBlockY + 1][nextTileX + 1] != '#')
+            {
+                invisibleDir[i] *= -1;
+                continue;
+            }
+        }
+        else
+        {
+            if(lvl[invBlockY + 1][nextTileX] != '#')
+            {
+                invisibleDir[i] *= -1;
+                continue;
+            }
+        }
+        
+        invisible_x[i] += invisibleSpeed[i] * invisibleDir[i];
+    }
+}
+
+void moveChelnovs(char** lvl, int height, int width, float chelnov_x[], 
+                 float chelnov_y[], float chelnovDir[], float chelnovSpeed[], 
+                 int chelnov_count, const int cell_size, char chelnovFace[])
+{
+    for(int i = 0; i < chelnov_count; i++)
+    {
+        if(chelnov_x[i] == 0 && chelnov_y[i] == 0)
+            continue;
+        
+        // Add your movement logic here (copy from moveGhosts and modify)
+        int invBlockX = (int)(chelnov_x[i] / cell_size);
+        int invBlockY = (int)(chelnov_y[i] / cell_size);
+        
+        float predictedX = chelnov_x[i] + (chelnovSpeed[i] * chelnovDir[i]);
+        int nextTileX = (int)(predictedX / cell_size) + 32;
+        
+        // Wall check
+        if (chelnovDir[i] == -1)
+        {
+            chelnovFace[i] = 'L';
+            if(lvl[invBlockY][nextTileX] == '#')
+            {
+                chelnovDir[i] *= -1;
+                chelnovFace[i] = 'R';
+                continue;
+            }
+        }
+        else
+        {
+            chelnovFace[i] = 'R';
+            if(lvl[invBlockY][nextTileX + 1] == '#')
+            {
+                chelnovDir[i] *= -1;
+                chelnovFace[i] = 'L';
+                continue;
+            }
+        }
+        
+        // Floor check
+        if(chelnovDir[i] == 1)
+        {
+            if(lvl[invBlockY + 1][nextTileX + 1] != '#')
+            {
+                chelnovDir[i] *= -1;
+                continue;
+            }
+        }
+        else
+        {
+            if(lvl[invBlockY + 1][nextTileX] != '#')
+            {
+                chelnovDir[i] *= -1;
+                continue;
+            }
+        }
+        
+        chelnov_x[i] += chelnovSpeed[i] * chelnovDir[i];
+    }
+}
+
+void initLevel1enemies(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count, int ghostTimer[], float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[],bool skeletonOnGround[], float skeletonY_velocity[]){
+	initSkeletons ( skeleton_x,  skeleton_y, skeletonDir, skeletonSpeed, skeleton_count, cell_size, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity);
+	initGhosts (ghostX, ghostY, ghostDir, ghostSpeed, ghost_count, ghostTimer);
+}
+
+void initLevel2enemies(float ghostX[], float ghostY[], int ghostDir[], float ghostSpeed[], int ghost_count, int ghostTimer[], float skeleton_x[], float skeleton_y[],float skeletonDir[], float skeletonSpeed[],int skeleton_count, const int cell_size,int skeletonState[],int skeletonCooldown[],bool skeletonOnGround[], float skeletonY_velocity[], int enemy_count){
+	for (int i=0; i< enemy_count; i++){
+
+	}
+}
+
+void slide(char** lvl, float& player_x, int PlayerHeight, int PlayerWidth, const int cell_size, float slideSpeed, bool onGround, float& player_y, bool& onSlope)
+{
+    // Only slide if on ground
+    if (!onGround)
+    {
+        onSlope = false;
+        return;
+    }
+    
+    // Check if standing on slanted platform
+    char bottom_left = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x) / cell_size];
+    char bottom_mid = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth/2) / cell_size];
+    char bottom_right = lvl[(int)(player_y + PlayerHeight) / cell_size][(int)(player_x + PlayerWidth) / cell_size + 1];
+    
+    if (bottom_right == '!' )
+    {
+        onSlope = true;
+        player_x --;
+		player_y ++;
+    }
+    else
+    {
+        onSlope = false;
+    }
 }
 
 void platformClear(char** lvl, const int height, const int width){
@@ -290,12 +599,14 @@ void jump(bool& onGround, float& velocityY, const float jumpStrength){
 
 void fall(bool& onGround, float& player_y, const float jumpStrength, int PlayerHeight, const int cell_size){
 	if(onGround){
-		if (player_y + PlayerHeight < screen_y - (cell_size * 2)) // Clamping down movement, cannot move down if standing on last bottom boundary
-		player_y -= jumpStrength;
+		{
+			if (player_y + PlayerHeight < screen_y - (cell_size * 2)) // Clamping down movement, cannot move down if standing on last bottom boundary
+			player_y -= jumpStrength;
+		}
 	}
 }
 
-void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth)
+void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGround, const float& gravity, float& terminal_Velocity, float& player_x, float& player_y, const int cell_size, int& Pheight, int& Pwidth, bool& onSlope)
 {
     // Store the initial y position of player
     float original_y = player_y;
@@ -311,14 +622,14 @@ void player_gravity(char** lvl, float& offset_y, float& velocityY, bool& onGroun
 
     // Block below player must be # and the velocity Y of player should be +ve to land on block and stop motion. 
 	// If velocity Y is -ve it means player is moving upwards and platforms check are not required and onGround bool should remain false so that the player does'nt get stuck in the platform.
-    if ( (bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#') && velocityY > 0)
+    if ( (bottom_left_down == '#' || bottom_mid_down == '#' || bottom_right_down == '#' || bottom_left_down == '!' || bottom_mid_down == '!' || bottom_right_down == '!') && velocityY > 0)
     {
         // Calculating the top edge of block where player is standing after moving vertically.
         float block_top_y = ((int)(offset_y + Pheight) / cell_size) * cell_size;
         
         // Checking if the player's bottom edge at the original position was above the block's top edge where player has moved.
         // It verifies that if player is landing on block and not hitting it from any side. Without this check player can get stuck inside the block if platform is above 3 blocks.
-        if (original_y + Pheight <= block_top_y + 0.1f)
+        if (original_y + Pheight <= block_top_y)
         {
             isJumping = false;
         }
@@ -353,13 +664,14 @@ void applySkeletonGravity(char** lvl,float skeleton_x[], float skeleton_y[],floa
     // Approximate skeleton size in pixels for collision
     int SkelHeight = 96; // fits inside 64x64 tile
     int SkelWidth  = 48; // sprite width
+	bool temp = false;
 
     for (int s = 0; s < skeleton_count; s++)
     {
 		if(skeleton_x[s] == 0 && skeleton_y[s] == 0)  // Add this
         continue;
         float offset_y_dummy = 0.0f;
-        player_gravity(lvl,offset_y_dummy,skeletonVelY[s],skeletonOnGround[s],gravity,terminal_velocity, skeleton_x[s], skeleton_y[s], cell_size, SkelHeight, SkelWidth);
+        player_gravity(lvl,offset_y_dummy,skeletonVelY[s],skeletonOnGround[s],gravity,terminal_velocity, skeleton_x[s], skeleton_y[s], cell_size, SkelHeight, SkelWidth,temp );
     }
 }
 
@@ -634,26 +946,24 @@ void killPlayer(float &player_x, float &player_y,int &playerLives, bool &playerI
     invClock.restart();
 }
 
-void platform2(char** lvl, const int height, const int width){
-	for (int i = 0; i < height; i++)
-	{
-		for (int j=0;  j< width; j++)
-		{
-			if (( i==3 ) && ( j<=2 || j>width-5 ) )
-				lvl[i][j] = '#';
-
-				int startRow = 10;
-    			int startCol = 3;
+void platform2(char** lvl, const int height, const int width)
+{
+    for (int i = 0; i < height; i++)
+    {
+        for (int j = 0; j < width; j++)
+        {
+            if ((i == 3) && (j <= 2 || j > width - 5))
+                lvl[i][j] = '#';
+        }   
+    }
     
-    			for(int i = 0; i < 10; i++)
-				{
-					lvl[startRow - i][startCol + i] = '#';
-				}
-
-			//if ( (i==6 || i==10) && (j<=5 || j>=width-6) )
-			//	lvl[i][j] = '#';			
-		}	
-	}
+    int startRow = 11;
+    int startCol = 5;
+    for (int i = 0; i < 9; i++)
+    {
+        lvl[startRow - i][startCol + i] = '!';
+        lvl[startRow - i][startCol + 1 + i] = '!';
+    }
 }
 
 bool levelCompletionCheck (float ghostX[], float ghostY[], float skeleton_x[], float skeleton_y[], int ghost_count, int skeleton_count){
@@ -709,7 +1019,7 @@ int main()
 	lvlMusic.play();
 	lvlMusic.setLoop(true);
 
-	//player data
+																	//player data
 	float player_x = 64;
 	float player_y = 64;
 	int playerLives = 3;
@@ -776,6 +1086,9 @@ int main()
 	char top_right_up = '\0';
 	char top_mid_up = '\0';
 	char top_left_up = '\0';
+																		//SLANT VARIABLES
+	bool onSlope = false;
+	float slideSpeed = 3.0f;
 
 																		//VACCUM VARIABLES
 	float vaccumForce = -8.0f;
@@ -802,10 +1115,6 @@ int main()
 	int ghostTimer[ghost_count];
 	char ghostFace[ghost_count];
 
-	if(levelNum == 1)
-	initGhosts(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer);
-
-
 	Texture ghostTex;
 	Sprite ghostSprite;
 
@@ -828,8 +1137,65 @@ int main()
 	bool  skeletonOnGround[skeleton_count];
 	float skeletonY_velocity[skeleton_count];
 
+																	// INVISIBLE MAN VARIABLES
+
+	Texture invManTex;
+	Sprite invManSprite;
+
+	const int invisible_count = 3;
+
+    float invisible_x[invisible_count];
+    float invisible_y[invisible_count];
+    float invisibleDir[invisible_count];
+    float invisibleSpeed[invisible_count];
+    char invisibleFace[invisible_count];
+
+	invManTex.loadFromFile("Data/IM.png");
+	invManSprite.setTexture(invManTex);
+	invManSprite.setScale(2,2);
+	invManSprite.setTextureRect(IntRect(0, 0, 64, 64));
+	invManSprite.setPosition(128, 256);
+
+																	// CHELNOV VARIABLES
+	const int chelnov_count = 4;
+
+    float chelnov_x[chelnov_count];
+    float chelnov_y[chelnov_count];
+    float chelnovDir[chelnov_count];
+    float chelnovSpeed[chelnov_count];
+    char chelnovFace[chelnov_count];
+
+	Texture chelnovTex;
+	Sprite chelnovSprite;
+
+	chelnovTex.loadFromFile("Data/chelnov.png");
+	chelnovSprite.setTexture(chelnovTex);
+	chelnovSprite.setScale(2,2);
+	chelnovSprite.setTextureRect(IntRect(0, 0, 64, 64));
+	chelnovSprite.setPosition(128, 256);
+
+	//Initializing every array to 0
+	for(int i = 0; i < ghost_count; i++) { ghostX[i] = 0; ghostY[i] = 0; }
+    for(int i = 0; i < skeleton_count; i++) { skeleton_x[i] = 0; skeleton_y[i] = 0; }
+    for(int i = 0; i < invisible_count; i++) { invisible_x[i] = 0; invisible_y[i] = 0; }
+    for(int i = 0; i < chelnov_count; i++) { chelnov_x[i] = 0; chelnov_y[i] = 0; }
+
+
+																//LEVEL 2 ENEMIES DATA FOR FUNCTION
+	const int MAX_SPAWNS = 20;
+    int spawnTypes[MAX_SPAWNS];   // 0=ghost, 1=skeleton, 2=invisible, 3=chelnov
+    int spawnRows[MAX_SPAWNS];    // Which row to spawn at
+    int spawnCols[MAX_SPAWNS];    // Which column to spawn at
+    int totalSpawns = 0;
+    int currentSpawnIndex = 0;
+    
+    // Spawn timer (using frame counter - simpler than Clock)
+    int spawnTimer = 0;
+    int spawnInterval = 240;  // 240 frames = 4 seconds at 60 FPS
+
 	if(levelNum == 1)
-	initSkeletons(skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown,skeletonOnGround,skeletonY_velocity);
+	initLevel1enemies(ghostX, ghostY, ghostDir, ghostSpeed, ghost_count,ghostTimer, skeleton_x,skeleton_y,skeletonDir,skeletonSpeed,skeleton_count,cell_size,skeletonState,skeletonCooldown,skeletonOnGround,skeletonY_velocity);
+	
 	
 	// sprites + texture
 	Texture skeletonTexture;
@@ -884,6 +1250,7 @@ int main()
 		{
 			sleep(seconds(2));
 			levelCompleted = false;
+			playerLives = 3;
 			levelNum += 1;
 			skeleton_x[2] = 20;
 			
@@ -894,6 +1261,36 @@ int main()
 		}
 		if (levelNum == 1)
 			platform(lvl, height, width);
+
+		if(levelNum == 2)
+		{
+			initSpawnQueue(spawnTypes, spawnRows, spawnCols, totalSpawns);
+			currentSpawnIndex = 0;
+			spawnTimer = 0;
+		}
+
+		if (levelNum == 2)
+		{
+			spawnTimer++;  // Increment every frame
+			
+			// Check if 4 seconds passed AND still have enemies to spawn
+			if (spawnTimer >= spawnInterval && currentSpawnIndex < totalSpawns)
+			{
+				spawnNextEnemy(spawnTypes, spawnRows, spawnCols, currentSpawnIndex,
+							ghostX, ghostY, ghostDir, ghostSpeed, ghostFace, ghost_count,
+							skeleton_x, skeleton_y, skeletonDir, skeletonSpeed,
+							skeletonState, skeletonCooldown, skeletonOnGround,
+							skeletonY_velocity, skeletonFace, skeleton_count,
+							invisible_x, invisible_y, invisibleDir, invisibleSpeed,
+							invisibleFace, invisible_count,
+							chelnov_x, chelnov_y, chelnovDir, chelnovSpeed,
+							chelnovFace, chelnov_count, cell_size);
+				
+				currentSpawnIndex++;  // Move to next enemy
+				spawnTimer = 0;        // Reset timer
+			}
+		}
+		
 		// UPDATE SHOOTING DIRECTION BASED ON WASD
 		if (Keyboard::isKeyPressed(Keyboard::W)) shootDir = 'U';
 		if (Keyboard::isKeyPressed(Keyboard::A)) shootDir = 'L';
@@ -906,6 +1303,8 @@ int main()
 			window.close();
 		}
 
+	if (!onSlope)
+	{
 		if (Keyboard::isKeyPressed(Keyboard::Left))
 		{
 			playerDirection = 'L';
@@ -958,15 +1357,16 @@ int main()
 				}
 			}
 		}
+	
+		if (Keyboard::isKeyPressed(Keyboard::Down))
+		{
+			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
+		}
+	}
 
 		if (Keyboard::isKeyPressed(Keyboard::Up))
 		{
 			jump(onGround, velocityY, jumpStrength);
-		}
-
-		if (Keyboard::isKeyPressed(Keyboard::Down))
-		{
-			fall(onGround, player_y, jumpStrength, PlayerHeight, cell_size);
 		}
 
 		if (Keyboard::isKeyPressed(Keyboard::W))
@@ -1076,6 +1476,18 @@ int main()
 		moveSkeletons(lvl, height, width,skeleton_x, skeleton_y, skeletonDir, skeletonSpeed, skeletonState, skeletonCooldown, skeletonOnGround, skeletonY_velocity, skeleton_count, cell_size, skeletonFace, jumpStrength);
 		applySkeletonGravity(lvl, skeleton_x, skeleton_y, skeletonY_velocity, skeletonOnGround, skeleton_count, gravity, terminal_Velocity, cell_size);
 		}
+
+		if (levelNum == 2)
+    {
+        moveInvisibleMen(lvl, height, width, invisible_x, invisible_y, 
+                        invisibleDir, invisibleSpeed, invisible_count, 
+                        cell_size, invisibleFace);
+        
+        moveChelnovs(lvl, height, width, chelnov_x, chelnov_y, 
+                    chelnovDir, chelnovSpeed, chelnov_count, 
+                    cell_size, chelnovFace);
+    }
+
 		
 											//BALL MOVEMENT
 		if (ballActive)
@@ -1194,7 +1606,11 @@ int main()
 		window.clear();
 
 		display_level(window, lvl, bgTex, bgSprite, blockTexture, blockSprite, height, width, cell_size);
-		player_gravity(lvl,offset_y,velocityY,onGround,gravity,terminal_Velocity, player_x, player_y, cell_size, PlayerHeight, PlayerWidth);
+		slide (lvl, player_x, PlayerHeight, PlayerWidth, cell_size, slideSpeed, onGround, player_y, onSlope);
+
+		if (!onSlope)
+			player_gravity(lvl,offset_y,velocityY,onGround,gravity,terminal_Velocity, player_x, player_y, cell_size, PlayerHeight, PlayerWidth, onSlope);
+		
 		PlayerSprite.setPosition(player_x, player_y);
 		if (playerDirection == 'R')
 		{
@@ -1243,6 +1659,49 @@ int main()
 			}
     		window.draw(skeletonSprite);
 		}
+													//RENDERING LEVEL 2 ENEMIES
+		if (levelNum == 2)
+		{
+			for(int i = 0; i < invisible_count; i++)
+			{
+				if (invisible_x[i] != 0 || invisible_y[i] != 0)
+				{
+					invManSprite.setPosition(invisible_x[i], invisible_y[i]);
+					if (invisibleFace[i] == 'R')
+					{
+						invManSprite.setScale(-2, 2);
+						invManSprite.move(96, 4);
+					}
+					else
+					{
+						invManSprite.setScale(2, 2);
+						invManSprite.move(-22, 4);
+					}
+					window.draw(invManSprite);
+				}
+			}
+			
+			// Render chelnovs
+			for(int c = 0; c < chelnov_count; c++)
+			{
+				if (chelnov_x[c] != 0 || chelnov_y[c] != 0)
+				{
+					chelnovSprite.setPosition(chelnov_x[c], chelnov_y[c]);
+					if (chelnovFace[c] == 'R')
+					{
+						chelnovSprite.setScale(-2, 2);
+						chelnovSprite.move(96, 4);
+					}
+					else
+					{
+						chelnovSprite.setScale(2, 2);
+						chelnovSprite.move(-22, 4);
+					}
+					window.draw(chelnovSprite);
+				}
+			}
+		}
+
 		if (ballActive)
 		{
 			ballSprite.setPosition(ballX, ballY);
