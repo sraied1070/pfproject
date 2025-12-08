@@ -1368,6 +1368,62 @@ int main()
 	bool comboActive = false;
 	int killedThisShot;
 
+	bool showTitleScreen = true;   
+	bool showCharacterSelect = false; 
+	int chosenCharacter = -1;   // 0 = Yellow, 1 = Green
+
+
+	Texture titleTex;
+	Sprite titleSprite;
+
+	titleTex.loadFromFile("Data/title.jpg");     // your title screen
+	titleSprite.setTexture(titleTex);
+	// SCALE TITLE SCREEN TO FILL THE WINDOW
+	float scaleX = (float)screen_x / titleTex.getSize().x;
+	float scaleY = (float)screen_y / titleTex.getSize().y;
+
+	// Use the smaller scale to keep proportions clean
+	float finalScale = (scaleX < scaleY) ? scaleX : scaleY;
+
+	titleSprite.setScale(finalScale, finalScale);
+
+	// Center it
+	float posX = (screen_x - (titleTex.getSize().x * finalScale)) / 2;
+	float posY = (screen_y - (titleTex.getSize().y * finalScale)) / 2;
+	titleSprite.setPosition(posX, posY);
+
+	// "Press Enter to Start" text
+	Text startText;
+	startText.setFont(scoreFont);
+	startText.setCharacterSize(48);
+	startText.setFillColor(Color::White);
+	startText.setString("Press ENTER to Start");
+	startText.setPosition(300, 700);
+
+	Texture charSelectFullTex;
+	Sprite charSelectSprite;
+
+	charSelectFullTex.loadFromFile("Data/character.jpeg");
+	charSelectSprite.setTexture(charSelectFullTex);
+
+	//SCALE TO FIT SCREEN
+	float charselectWidth = charSelectFullTex.getSize().x;
+	float charselectHeight = charSelectFullTex.getSize().y;
+
+	float charselectScaleX = (float)screen_x / charselectWidth;
+	float charselectScaleY = (float)screen_y / charselectHeight;
+
+	// keep aspect ratio clean
+	float charselectFinalScale = (charselectScaleX < charselectScaleY) ? charselectScaleX : charselectScaleY;
+
+	charSelectSprite.setScale(charselectFinalScale, charselectFinalScale);
+
+	//CENTER ON SCREEN
+	float charselectPosX = (screen_x - charselectWidth * charselectFinalScale) / 2;
+	float charselectPosY = (screen_y - charselectHeight * charselectFinalScale) / 2;
+
+	charSelectSprite.setPosition(charselectPosX, charselectPosY);
+
 	//creating level array
 	lvl = new char* [height];
 	for (int i = 0; i < height; i += 1)
@@ -1382,6 +1438,75 @@ int main()
 																		//MAIN LOOP
 	while (window.isOpen())
 	{
+		// TITLE SCREEN 
+		if (showTitleScreen)
+		{
+			while (window.pollEvent(ev))
+			{
+				if (ev.type == Event::Closed)
+					window.close();
+
+				if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Enter)
+				{
+					showTitleScreen = false;
+					showCharacterSelect = true;
+    				continue;
+				}
+			}
+
+			window.clear();
+			window.draw(titleSprite);
+			window.draw(startText);
+			window.display();
+			continue;        
+		}
+		// CHARACTER SELECT SCREEN
+		if (showCharacterSelect)
+		{
+			while (window.pollEvent(ev))
+			{
+				if (ev.type == Event::Closed)
+					window.close();
+
+				if (ev.type == Event::KeyPressed)
+				{
+					if (ev.key.code == Keyboard::Num0)
+					{
+						chosenCharacter = 0;    // Yellow
+						showCharacterSelect = false;
+					}
+					if (ev.key.code == Keyboard::Num1)
+					{
+						chosenCharacter = 1;    // Green
+						showCharacterSelect = false;
+					}
+				}
+			}
+
+			window.clear();
+			window.draw(charSelectSprite);
+			window.display();
+			continue;
+
+		}
+		if (chosenCharacter == 0)
+		{
+			// Yellow character settings
+			PlayerTexture.loadFromFile("Data/yellowsheet.png");
+			PlayerSprite.setScale(3, 3);
+			PlayerSprite.setTextureRect(IntRect(16,16,39,38));
+
+			speed = 5;      //regular speed, more powerful vacuum
+		}
+
+		if (chosenCharacter == 1)
+		{
+			// Green character settings
+			PlayerTexture.loadFromFile("Data/player.png");
+			PlayerSprite.setScale(3, 3);
+
+			speed = 7.5f;              // faster movement
+		}
 		while (window.pollEvent(ev))
 		{
 			if (ev.type == Event::Closed) 
@@ -1895,7 +2020,6 @@ int main()
 			levelClock.restart();
 		}
 		window.display();
-		lvlMusic.stop();
 		if (playerLives <= 0)
 		{
 			window.close(); // or show game over screen later
